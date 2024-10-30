@@ -35,20 +35,18 @@ const ChapterIdPage = async ({
     });
 
     if (!chapter) {
-        return redirect("/")
+        return redirect("/");
     }
 
     const requiredFields = [
         chapter.title,
-        chapter.description,
-        chapter.videoUrl,
+        chapter.description
     ];
 
     const totalFields = requiredFields.length;
     const completedFields = requiredFields.filter(Boolean).length;
 
     const completionText = `(${completedFields}/${totalFields})`;
-
     const isComplete = requiredFields.every(Boolean);
 
     return (
@@ -139,5 +137,5 @@ const ChapterIdPage = async ({
         </>
     );
 };
- 
+
 export default ChapterIdPage;
