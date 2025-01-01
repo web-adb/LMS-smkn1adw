@@ -122,10 +122,13 @@ const ChapterIdPage = async ({
                     <div>
                         <div className="flex items-center gap-x-2">
                             <IconBadge icon={Video} />
-                            <h2 className="text-xl">
+                            <h2 className="text-xl mr-2 flex items-center">
                                 Add a video
-                            </h2>
-                        </div>
+                                <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-500 text-white">
+                                    Opsional
+                                    </span>
+                                    </h2>
+                            </div>
                         <ChapterVideoForm
                             initialData={chapter}
                             chapterId={params.chapterId}
