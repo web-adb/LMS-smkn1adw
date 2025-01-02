@@ -14,6 +14,11 @@ const guestRoutes = [
         icon: Compass,
         label: "Browse",
         href: "/search"
+    },
+    {
+        icon: UserRoundCheck,
+        label: "Daftar Siswa",
+        href: "/daftar-siswa"
     }
 ];
 
