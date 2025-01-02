@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Compass, Layout, List, Eye } from "lucide-react";
+import { BarChart, Compass, Layout, List, Eye, UserRoundCheck } from "lucide-react";
 import { SidebarItem } from "./sidebar-item";
 import { usePathname } from "next/navigation";
 
@@ -32,6 +32,11 @@ const teacherRoutes = [
         icon: Eye,
         label: "Statistik",
         href: "/teacher/statistik",
+    },
+    {
+        icon: UserRoundCheck,
+        label: "Daftar Siswa",
+        href: "/teacher/daftar-siswa",
     }
 ];
 
