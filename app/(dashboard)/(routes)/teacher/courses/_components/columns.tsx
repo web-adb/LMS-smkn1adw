@@ -92,43 +92,45 @@ export const columns: ColumnDef<Course>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const router = useRouter();
-      const { id } = row.original;
-
-      const onDelete = async () => {
-        try {
-          await axios.delete(`/api/courses/${id}`);
-          toast.success("Course deleted");
-          router.refresh();
-          router.push(`/teacher/courses`);
-        } catch {
-          toast.error("Something went wrong");
-        }
-      };
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-4 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <Link href={`/teacher/courses/${id}`}>
-              <DropdownMenuItem>
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-            </Link>
-            <DropdownMenuItem onClick={onDelete}>
-              <Trash className="h-4 w-4 mr-2" />
-              Hapus
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    cell: (props) => <ActionsCell {...props} />,
   },
 ];
+
+const ActionsCell = ({ row }: { row: any }) => {
+  const router = useRouter();
+  const { id } = row.original;
+
+  const onDelete = async () => {
+    try {
+      await axios.delete(`/api/courses/${id}`);
+      toast.success("Course deleted");
+      router.refresh();
+      router.push(`/teacher/courses`);
+    } catch {
+      toast.error("Something went wrong");
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-4 w-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <Link href={`/teacher/courses/${id}`}>
+          <DropdownMenuItem>
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </DropdownMenuItem>
+        </Link>
+        <DropdownMenuItem onClick={onDelete}>
+          <Trash className="h-4 w-4 mr-2" />
+          Hapus
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
