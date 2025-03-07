@@ -5,6 +5,9 @@ const nextConfig = {
         "utfs.io"
         ]
     },
+    experimental: {
+        runtime: "nodejs",
+      },
     eslint: {
         ignoreDuringBuilds: true, // Menonaktifkan ESLint saat build
       },
