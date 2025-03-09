@@ -6,13 +6,18 @@ import { getProgress } from "@/actions/get-progress";
 import { CourseSidebar } from "./_components/course-sidebar";
 import { CourseNavbar } from "./_components/course-navbar";
 
-const CourseLayout = async ({
-    children,
-    params
-}: {
-    children: React.ReactNode,
-    params: { courseId: string }
-    }) => {
+const CourseLayout = async (
+    props: {
+        children: React.ReactNode,
+        params: Promise<{ courseId: string }>
+        }
+) => {
+    const params = await props.params;
+
+    const {
+        children
+    } = props;
+
     const { userId } = auth();
 
     if (!userId) {
@@ -47,7 +52,7 @@ const CourseLayout = async ({
     }
 
     const progressCount = await getProgress(userId, course.id);
-    
+
     return (
         <div className="h-full">
             <div className="h-[80px] md:pl-80 w-full fixed inset-y-0 z-50">

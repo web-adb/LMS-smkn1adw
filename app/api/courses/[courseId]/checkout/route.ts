@@ -6,13 +6,15 @@ import { stripe } from "@/lib/stripe";
 import { currentUser } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request, {
-    params
-}: {
-    params: {
-        courseId: string
+export async function POST(
+    req: Request,
+    props: {
+        params: Promise<{
+            courseId: string
+        }>
     }
-}) {
+) {
+    const params = await props.params;
     try {
         const user = await currentUser();
 

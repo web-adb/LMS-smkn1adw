@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Compass, Layout, List, Eye, UserRoundCheck } from "lucide-react";
+import { BarChart, Compass, Layout, List, Eye, UserRoundCheck, Award, Settings, HelpCircle, MessageSquare, Calendar, Trophy, Clock } from "lucide-react";
 import { SidebarItem } from "./sidebar-item";
 import { usePathname } from "next/navigation";
 
@@ -14,6 +14,46 @@ const guestRoutes = [
         icon: Compass,
         label: "Browse",
         href: "/search"
+    },
+    {
+        icon: List,
+        label: "Daftar Tugas",
+        href: "/tugas"
+    },
+    {
+        icon: Calendar,
+        label: "Kalender",
+        href: "/kalender"
+    },
+    {
+        icon: Trophy,
+        label: "Papan Peringkat",
+        href: "/papan-peringkat"
+    },
+    {
+        icon: Award,
+        label: "Sertifikat",
+        href: "/sertifikat"
+    },
+    {
+        icon: Clock,
+        label: "Riwayat Aktivitas",
+        href: "/riwayat-aktivitas"
+    },
+    {
+        icon: MessageSquare,
+        label: "Forum/Diskusi",
+        href: "/forum"
+    },
+    {
+        icon: HelpCircle,
+        label: "Bantuan/Dukungan",
+        href: "/bantuan"
+    },
+    {
+        icon: Settings,
+        label: "Pengaturan",
+        href: "/pengaturan"
     }
 ];
 
@@ -22,6 +62,21 @@ const teacherRoutes = [
         icon: List,
         label: "Courses",
         href: "/teacher/courses",
+    },
+    {
+        icon: List,
+        label: "Tugas & Ujian",
+        href: "/teacher/tugas-ujian"
+    },
+    {
+        icon: Calendar,
+        label: "Penjadwalan Kelas",
+        href: "/teacher/penjadwalan-kelas"
+    },
+    {
+        icon: UserRoundCheck,
+        label: "Daftar Siswa",
+        href: "/teacher/daftar-siswa",
     },
     {
         icon: BarChart,
@@ -34,9 +89,19 @@ const teacherRoutes = [
         href: "/teacher/statistik",
     },
     {
-        icon: UserRoundCheck,
-        label: "Daftar Siswa",
-        href: "/teacher/daftar-siswa",
+        icon: BarChart,
+        label: "Laporan Kinerja",
+        href: "/teacher/laporan-kinerja"
+    },
+    {
+        icon: Award,
+        label: "Manajemen Sertifikat",
+        href: "/teacher/manajemen-sertifikat"
+    },
+    {
+        icon: MessageSquare,
+        label: "Forum Diskusi",
+        href: "/teacher/forum-diskusi"
     }
 ];
 
