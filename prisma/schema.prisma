@@ -112,3 +112,15 @@ model Post {
   author    String
   createdAt DateTime @default(now())
 }
+
+model Tugas {
+  id          String   @id @default(cuid())
+  judul       String
+  deskripsi   String
+  deadline    DateTime
+  lampiran    String?
+  selesai     Boolean  @default(false)
+  dikumpulkan Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

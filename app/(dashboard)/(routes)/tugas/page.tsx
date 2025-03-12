@@ -1,6 +1,7 @@
-'use client'
-import React from "react";
-import { ClipboardList, CalendarDays, Clock, FileText, CheckCircle, MoreVertical, Upload } from "lucide-react"; // Import ikon dari Lucide
+'use client';
+import React, { useEffect, useState } from 'react';
+import { ClipboardList, CalendarDays, Clock, FileText, CheckCircle, MoreVertical, Upload } from 'lucide-react';
+import { formatDate, formatTime } from '@/app/utils/dateUtils'; // Sesuaikan path
 
 // Definisikan tipe untuk data tugas
 interface Tugas {
@@ -11,48 +12,70 @@ interface Tugas {
   waktu: string;
   lampiran: string;
   selesai: boolean;
-  dikumpulkan: boolean; // Tambahkan status pengumpulan tugas
+  dikumpulkan: boolean;
 }
 
-// Data dummy tugas
-const dummyTugas: Tugas[] = [
-  {
-    id: "tugas_1",
-    judul: "Tugas Matematika - Aljabar",
-    deskripsi: "Selesaikan soal aljabar halaman 45-50.",
-    deadline: "2023-10-25",
-    waktu: "23:59",
-    lampiran: "soal_aljabar.pdf",
-    selesai: false,
-    dikumpulkan: false,
-  },
-  {
-    id: "tugas_2",
-    judul: "Tugas Bahasa Inggris - Essay",
-    deskripsi: "Tulis essay tentang lingkungan sekitar.",
-    deadline: "2023-10-27",
-    waktu: "23:59",
-    lampiran: "petunjuk_essay.docx",
-    selesai: true,
-    dikumpulkan: true,
-  },
-  {
-    id: "tugas_3",
-    judul: "Tugas Fisika - Gerak Lurus",
-    deskripsi: "Kerjakan soal gerak lurus dari buku paket.",
-    deadline: "2023-10-30",
-    waktu: "23:59",
-    lampiran: "soal_fisika.pdf",
-    selesai: false,
-    dikumpulkan: false,
-  },
-];
-
 const DaftarTugasPage: React.FC = () => {
-  // Fungsi untuk menangani pengumpulan tugas
-  const handleKumpulkanTugas = (id: string) => {
-    alert(`Tugas dengan ID ${id} berhasil dikumpulkan!`);
-    // Di sini Anda bisa menambahkan logika untuk mengubah status tugas menjadi "dikumpulkan"
+  const [tugas, setTugas] = useState<Tugas[]>([]);
+
+  // Ambil data tugas dari API
+  useEffect(() => {
+    const fetchTugas = async () => {
+      try {
+        const response = await fetch('/api/tugas');
+        const data = await response.json();
+        setTugas(data);
+      } catch (error) {
+        console.error('Gagal mengambil data tugas:', error);
+      }
+    };
+
+    fetchTugas();
+  }, []);
+
+  // Fungsi untuk menandai tugas sebagai selesai/belum selesai
+  const handleTandaiSelesai = async (id: string, selesai: boolean) => {
+    try {
+      const response = await fetch(`/api/tugas`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, selesai: !selesai, dikumpulkan: false }),
+      });
+
+      if (response.ok) {
+        const updatedTugas = tugas.map((t) =>
+          t.id === id ? { ...t, selesai: !selesai } : t
+        );
+        setTugas(updatedTugas);
+      }
+    } catch (error) {
+      console.error('Gagal mengupdate status tugas:', error);
+    }
+  };
+
+  // Fungsi untuk mengumpulkan tugas
+  const handleKumpulkanTugas = async (id: string) => {
+    try {
+      const response = await fetch(`/api/tugas`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, dikumpulkan: true }),
+      });
+
+      if (response.ok) {
+        const updatedTugas = tugas.map((t) =>
+          t.id === id ? { ...t, dikumpulkan: true } : t
+        );
+        setTugas(updatedTugas);
+        alert('Tugas berhasil dikumpulkan!');
+      }
+    } catch (error) {
+      console.error('Gagal mengumpulkan tugas:', error);
+    }
   };
 
   // Fungsi untuk menentukan warna badge berdasarkan deadline
@@ -63,11 +86,11 @@ const DaftarTugasPage: React.FC = () => {
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
     if (daysDiff < 0) {
-      return "bg-red-100 text-red-800"; // Deadline sudah lewat
+      return 'bg-red-100 text-red-800'; // Deadline sudah lewat
     } else if (daysDiff <= 2) {
-      return "bg-yellow-100 text-yellow-800"; // Deadline mendekati
+      return 'bg-yellow-100 text-yellow-800'; // Deadline mendekati
     } else {
-      return "bg-green-100 text-green-800"; // Deadline masih lama
+      return 'bg-green-100 text-green-800'; // Deadline masih lama
     }
   };
 
@@ -81,7 +104,7 @@ const DaftarTugasPage: React.FC = () => {
 
       {/* Daftar Tugas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {dummyTugas.map((tugas: Tugas) => (
+        {tugas.map((tugas: Tugas) => (
           <div
             key={tugas.id}
             className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
@@ -99,11 +122,11 @@ const DaftarTugasPage: React.FC = () => {
             <div className="flex items-center space-x-4 mb-4">
               <div className={`flex items-center text-sm px-3 py-1 rounded-full ${getDeadlineBadgeColor(tugas.deadline)}`}>
                 <CalendarDays className="h-4 w-4 mr-2" />
-                <span>{tugas.deadline}</span>
+                <span>{formatDate(tugas.deadline)}</span>
               </div>
               <div className="flex items-center text-sm text-gray-500">
                 <Clock className="h-4 w-4 mr-2" />
-                <span>{tugas.waktu}</span>
+                <span>{formatTime(tugas.deadline)}</span>
               </div>
             </div>
 
@@ -122,11 +145,14 @@ const DaftarTugasPage: React.FC = () => {
                   <div className="h-5 w-5 border-2 border-gray-300 rounded-full mr-2"></div>
                 )}
                 <span className="text-sm text-gray-600">
-                  {tugas.selesai ? "Selesai" : "Belum Selesai"}
+                  {tugas.selesai ? 'Selesai' : 'Belum Selesai'}
                 </span>
               </div>
-              <button className="text-sm text-blue-500 hover:text-blue-600">
-                {tugas.selesai ? "Tandai Belum Selesai" : "Tandai Selesai"}
+              <button
+                onClick={() => handleTandaiSelesai(tugas.id, tugas.selesai)}
+                className="text-sm text-blue-500 hover:text-blue-600"
+              >
+                {tugas.selesai ? 'Tandai Belum Selesai' : 'Tandai Selesai'}
               </button>
             </div>
 
