@@ -1,73 +1,87 @@
-import React from "react";
+'use client';
 
-// Definisikan tipe untuk data sertifikat
-interface Sertifikat {
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+
+interface Certificate {
   id: string;
-  judul: string;
-  deskripsi: string;
-  gambar: string;
-  tanggal: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  date: string;
 }
 
-// Data dummy sertifikat
-const sertifikatData: Sertifikat[] = [
-  {
-    id: "1",
-    judul: "Sertifikat Kelulusan Kursus React",
-    deskripsi: "Sertifikat ini diberikan sebagai tanda kelulusan kursus React.",
-    gambar: "/sertifikat-react.jpg",
-    tanggal: "10 Oktober 2023",
-  },
-  {
-    id: "2",
-    judul: "Sertifikat Pelatihan Tailwind CSS",
-    deskripsi: "Sertifikat ini diberikan setelah menyelesaikan pelatihan Tailwind CSS.",
-    gambar: "/sertifikat-tailwind.jpg",
-    tanggal: "15 Oktober 2023",
-  },
-  {
-    id: "3",
-    judul: "Sertifikat Workshop Next.js",
-    deskripsi: "Sertifikat ini diberikan setelah mengikuti workshop Next.js.",
-    gambar: "/sertifikat-nextjs.jpg",
-    tanggal: "20 Oktober 2023",
-  },
-  {
-    id: "4",
-    judul: "Sertifikat Seminar Web Development",
-    deskripsi: "Sertifikat ini diberikan setelah menghadiri seminar Web Development.",
-    gambar: "/sertifikat-webdev.jpg",
-    tanggal: "25 Oktober 2023",
-  },
-];
-
 const HasilSertifikatPage: React.FC = () => {
+  const { userId } = useAuth();
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Mengambil sertifikat dari API
+  useEffect(() => {
+    const fetchCertificates = async () => {
+      try {
+        const response = await fetch(`/api/certificates?userId=${userId}`);
+        if (!response.ok) {
+          throw new Error('Gagal mengambil data sertifikat');
+        }
+        const data = await response.json();
+        setCertificates(data);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchCertificates();
+    }
+  }, [userId]);
+
+  if (!userId) {
+    return <div>Anda harus login untuk melihat sertifikat.</div>;
+  }
+
+  if (isLoading) {
+    return <div>Memuat sertifikat...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Sertifikat Saya</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sertifikatData.map((sertifikat) => (
-            <div
-              key={sertifikat.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-            >
-              <img
-                src={sertifikat.gambar}
-                alt={sertifikat.judul}
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-6">
-                <h2 className="text-xl font-semibold mb-2">{sertifikat.judul}</h2>
-                <p className="text-gray-600 mb-4">{sertifikat.deskripsi}</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  <strong>Tanggal:</strong> {sertifikat.tanggal}
-                </p>
-                <button className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">
-                  Unduh Sertifikat
-                </button>
+          {certificates.length > 0 ? (
+            certificates.map((certificate) => (
+              <div
+                key={certificate.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+              >
+                <img
+                  src={certificate.imageUrl}
+                  alt={certificate.title}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-6">
+                  <h2 className="text-xl font-semibold mb-2">{certificate.title}</h2>
+                  <p className="text-gray-600 mb-4">{certificate.description}</p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    <strong>Tanggal:</strong>{' '}
+                    {new Date(certificate.date).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </p>
+                  <button className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors">
+                    Unduh Sertifikat
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p>Anda belum memiliki sertifikat.</p>
+          )}
         </div>
       </div>
     </div>
