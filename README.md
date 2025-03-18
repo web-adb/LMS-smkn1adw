@@ -48,25 +48,7 @@ Welcome to the LMS (Learning Management System) project! This project aims to pr
 
 ## Environment Variables
 
-Ensure to set up the following environment variables in your `.env` file:
 
-```js
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_bm90YWJsZS1tdXNrcmF0LTIxLmNsZXJrLmFjY291bnRzLmRldiQ
-CLERK_SECRET_KEY=sk_test_PXMImbMILmCv2bjlVzcMRjurEmBX4GDnwXrYxa5gVD
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
-DATABASE_URL=mysql://root:2024@localhost:3306/Netra_Database
-UPLOADTHING_SECRET='sk_live_e5970dc015cc149c86d8c84d124fba7a28b672b6fd2b9e23d0fc0060692070f1'
-UPLOADTHING_APP_ID='2e981309se'
-MUX_TOKEN_ID=384db014-1137-4444-b7cc-f22ab52ddeb3
-MUX_TOKEN_SECRET=WB+/4OPW7Buk9hjXGFu9++e7QwY4eaN679kStjKAMvXtV2q/E/U9DBFM1zafg2bTBuA/tNwe1xi
-STRIPE_API_KEY=sk_test_51Q4DNZLKE6DDrt1VFvpn4orxu8zeI4PfXayAilnklmGd1tdT16pDiIxJVq5sBfsUqFyQ6Y8YAvvDccoPCWqrJ44R00AJt1LgUT
-NEXT_PUBLIC_APP_URL=http://202.65.116.10:3000/
-STRIPE_WEBHOOK_SECRET=whsec_d95c1d222b82ced8e23f43a2a3affe188ef3203a36e5638c095309d57f34f1ed
-NEXT_PUBLIC_TEACHER_ID=user_2mj0MLV0OuNMPCN12RNgnoTyaCP,user_2mizoLKkfsy3sVdyZaV9WcgXZi0,user_2mkQpcuXMIOoo9omYiW9nGncCy7,user_2mkJiFlVbxLU0QidmPwK2uHw0Of
-```
 
 
 ## Getting Started
