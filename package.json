@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/nextjs": "^4.29.9",
     "@fullcalendar/react": "^6.1.15",
+    "@google/generative-ai": "^0.24.0",
     "@hello-pangea/dnd": "^16.6.0",
     "@hookform/resolvers": "^3.3.4",
     "@mux/mux-node": "^8.2.3",

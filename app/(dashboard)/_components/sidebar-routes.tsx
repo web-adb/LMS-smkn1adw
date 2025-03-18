@@ -6,56 +6,56 @@ import { usePathname } from "next/navigation";
 
 const guestRoutes = [
     {
-        icon: Layout,
-        label: "Dashboard",
-        href: "/"
+      icon: Layout,
+      label: "Beranda",
+      href: "/",
     },
     {
-        icon: Compass,
-        label: "Browse",
-        href: "/search"
+      icon: Compass,
+      label: "Jelajahi Kursus",
+      href: "/search",
     },
     {
-        icon: List,
-        label: "Daftar Tugas",
-        href: "/tugas"
+      icon: List,
+      label: "Tugas Saya",
+      href: "/tugas",
     },
     {
-        icon: Calendar,
-        label: "Kalender",
-        href: "/kalender"
+      icon: Calendar,
+      label: "Kalender",
+      href: "/kalender",
     },
     {
-        icon: Trophy,
-        label: "Papan Peringkat",
-        href: "/papan-peringkat"
+      icon: Trophy,
+      label: "Peringkat Siswa",
+      href: "/papan-peringkat",
     },
     {
-        icon: Award,
-        label: "Sertifikat",
-        href: "/sertifikat"
+      icon: Award,
+      label: "Sertifikat Saya",
+      href: "/sertifikat",
     },
     {
-        icon: Clock,
-        label: "Riwayat Aktivitas",
-        href: "/riwayat-aktivitas"
+      icon: Clock,
+      label: "Aktivitas",
+      href: "/riwayat-aktivitas",
     },
     {
-        icon: MessageSquare,
-        label: "Forum/Diskusi",
-        href: "/forum"
+      icon: MessageSquare,
+      label: "Forum Diskusi",
+      href: "/forum",
     },
     {
-        icon: HelpCircle,
-        label: "Bantuan/Dukungan",
-        href: "/bantuan"
+      icon: HelpCircle,
+      label: "Pusat Bantuan",
+      href: "/bantuan",
     },
     {
-        icon: Settings,
-        label: "Pengaturan",
-        href: "/pengaturan"
-    }
-];
+      icon: Settings,
+      label: "Pengaturan Akun",
+      href: "/pengaturan",
+    },
+  ];
 
 const teacherRoutes = [
     {
