@@ -114,6 +114,33 @@ export async function PATCH(
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // Jika youtubeUrl diberikan, set videoUrl ke null dan hapus data Mux jika ada
+        if (values.youtubeUrl) {
+            values.videoUrl = null; // Pastikan videoUrl di-set ke null
+
+            // Hapus data Mux jika ada
+            const existingMuxData = await db.muxData.findFirst({
+                where: {
+                    chapterId: params.chapterId,
+                }
+            });
+
+            if (existingMuxData) {
+                await mux.video.assets.delete(existingMuxData.assetId);
+                await db.muxData.delete({
+                    where: {
+                        id: existingMuxData.id,
+                    }
+                });
+            }
+        }
+
+        // Jika videoUrl diberikan, set youtubeUrl ke null
+        if (values.videoUrl) {
+            values.youtubeUrl = null;
+        }
+
+        // Update chapter dengan data baru
         const chapter = await db.chapter.update({
             where: {
                 id: params.chapterId,
@@ -124,6 +151,7 @@ export async function PATCH(
             }
         });
 
+        // Jika videoUrl diberikan, buat data Mux baru
         if (values.videoUrl) {
             const existingMuxData = await db.muxData.findFirst({
                 where: {

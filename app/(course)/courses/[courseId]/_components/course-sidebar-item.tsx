@@ -9,7 +9,7 @@ interface CourseSidebarItemProps {
     id: string;
     isCompleted: boolean;
     courseId: string;
-    isLocked: boolean
+    isLocked: boolean;
 }
 
 export const CourseSidebarItem = ({
@@ -34,20 +34,21 @@ export const CourseSidebarItem = ({
             onClick={onClick}
             type="button"
             className={cn(
-            "flex items-center gap-x-2 text-slate-500 text-sm font-[500] pl-6 transition-all hover:text-slate-600 hover:bg-slate-300/20",
-            isActive && "text-sky-700 bg-sky-200/20 hover:bg-sky-200/20 hover:text-sky-700",
-            isCompleted && "text-emerald-700 hover:text-emerald-700",
-            isCompleted && isActive && "bg-emerald-200/20"
-        )}>
-            <div className="flex items-center gap-x-2 py-4">
-                <Icon size={22} className={cn(
-                        "text-slate-500",
-                        isActive && "text-slate-700",
-                        isCompleted && "text-emerald-700"
-                    )}
-                />
-                {label}
-            </div>
+                "flex items-center gap-x-3 w-full text-slate-500 text-sm font-[500] p-3 transition-all hover:bg-slate-100 rounded-lg",
+                isActive && "text-sky-700 bg-sky-100 hover:bg-sky-100",
+                isCompleted && "text-emerald-700 hover:text-emerald-700",
+                isCompleted && isActive && "bg-emerald-100"
+            )}
+        >
+            <Icon
+                size={20}
+                className={cn(
+                    "text-slate-500 flex-shrink-0",
+                    isActive && "text-sky-700",
+                    isCompleted && "text-emerald-700"
+                )}
+            />
+            <span className="text-left truncate">{label}</span>
             <div className={cn(
                 "ml-auto opacity-0 border-2 border-slate-700 h-full transition-all",
                 isActive && "opacity-100",

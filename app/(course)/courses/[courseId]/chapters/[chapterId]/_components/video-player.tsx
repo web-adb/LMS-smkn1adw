@@ -14,6 +14,7 @@ interface VideoPlayerProps {
     chapterId: string;
     courseId: string;
     playbackId: string;
+    youtubeUrl: string;
     nextChapterId?: string;
     isLocked: boolean;
     completeOnEnd: boolean;
@@ -22,6 +23,7 @@ interface VideoPlayerProps {
 
 export const VideoPlayer = ({
     playbackId,
+    youtubeUrl,
     chapterId,
     courseId,
     nextChapterId,
@@ -33,6 +35,7 @@ export const VideoPlayer = ({
 
     const router = useRouter();
     const confetti = useConfettiStore();
+
 
     const onEnd = async () => {
         try {
@@ -55,6 +58,11 @@ export const VideoPlayer = ({
         } catch {
             toast.error("Something went wrong");
         }
+    };
+
+    // Jika tidak ada video, jangan render apa pun
+    if (!playbackId && !youtubeUrl) {
+        return null;
     }
 
     return (
@@ -71,16 +79,34 @@ export const VideoPlayer = ({
                 </div>
             )}
             {!isLocked && (
-                <MuxPlayer
-                    title={title}
-                    className={cn(!isReady && "hidden")}
-                    onCanPlay={() => setIsReady(true)}
-                    onEnded={onEnd}
-                    autoPlay
-                    playbackId={playbackId}
-                />
+                <>
+                    {youtubeUrl ? (
+                        <iframe
+                            src={`https://www.youtube.com/embed/${extractYouTubeId(youtubeUrl)}`}
+                            className="w-full h-full rounded-md"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            onLoad={() => setIsReady(true)}
+                        />
+                    ) : (
+                        <MuxPlayer
+                            title={title}
+                            className={cn(!isReady && "hidden")}
+                            onCanPlay={() => setIsReady(true)}
+                            onEnded={onEnd}
+                            autoPlay
+                            playbackId={playbackId}
+                        />
+                    )}
+                </>
             )}
         </div>
     );
 };
 
+// Helper function to extract YouTube ID from URL
+const extractYouTubeId = (url: string) => {
+  const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+};
