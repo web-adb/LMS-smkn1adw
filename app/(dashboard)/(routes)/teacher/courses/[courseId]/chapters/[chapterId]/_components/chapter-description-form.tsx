@@ -4,12 +4,14 @@ import * as z from "zod";
 import axios from "axios";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Pencil, X, Save, Sparkles } from "lucide-react";
+import { Pencil, X, Save, Sparkles, Upload } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Chapter } from "@prisma/client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import mammoth from "mammoth";
+import { PDFDocument } from "pdf-lib";
 
 import {
   Form,
@@ -40,10 +42,10 @@ export const ChapterDescriptionForm = ({
 }: ChapterDescriptionFormProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false); // Auto-save off by default
+  const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const editorRef = useRef<any>(null); // Ref untuk mengakses editor
+  const editorRef = useRef<any>(null);
 
   const toggleEdit = () => setIsEditing((current) => !current);
 
@@ -58,7 +60,6 @@ export const ChapterDescriptionForm = ({
 
   const { isSubmitting, isValid } = form.formState;
 
-  // Fungsi untuk meminta saran AI dari teks yang diblok
   const generateSuggestions = async () => {
     if (!editorRef.current) {
       toast.error("Editor tidak tersedia.");
@@ -82,7 +83,6 @@ export const ChapterDescriptionForm = ({
       const response = await result.response;
       const text = response.text();
 
-      // Parsing saran dari respons AI
       const suggestions = text
         .split("\n")
         .map((line) => line.replace(/^\d+\.\s*/, "").trim())
@@ -96,15 +96,13 @@ export const ChapterDescriptionForm = ({
     }
   };
 
-  // Fungsi untuk menerapkan saran ke teks yang diblok
   const applySuggestion = (suggestion: string) => {
     if (!editorRef.current) return;
   
-    const editor = editorRef.current.getEditor(); // Menggunakan metode getEditor yang diekspos
+    const editor = editorRef.current.getEditor();
     const range = editor.getSelection();
   
     if (range) {
-      // Ganti teks yang diblok dengan saran yang dipilih
       editor.deleteText(range.index, range.length);
       editor.insertText(range.index, suggestion);
     }
@@ -123,7 +121,31 @@ export const ChapterDescriptionForm = ({
     }
   };
 
-  // Auto-save logic
+  const handleFileUpload = async (file: File) => {
+    try {
+      let htmlContent = "";
+
+      if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+        htmlContent = result.value;
+      } else if (file.type === "application/pdf") {
+        const pdfDoc = await PDFDocument.load(await file.arrayBuffer());
+        const pages = pdfDoc.getPages();
+        htmlContent = pages.map((page) => page.getTextContent()).join("\n");
+      } else {
+        toast.error("Format file tidak didukung.");
+        return;
+      }
+
+      if (editorRef.current) {
+        const editor = editorRef.current.getEditor();
+        editor.clipboard.dangerouslyPasteHTML(htmlContent);
+      }
+    } catch (error) {
+      toast.error("Gagal mengupload file.");
+    }
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isEditing && isAutoSaveEnabled) {
@@ -131,7 +153,7 @@ export const ChapterDescriptionForm = ({
         if (isAutoSaveEnabled) {
           form.handleSubmit(onSubmit)();
         }
-      }, 10000); // Auto-save setiap 10 detik
+      }, 10000);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -199,7 +221,6 @@ export const ChapterDescriptionForm = ({
                     <FormItem className="h-full">
                       <FormControl>
                         <div>
-                          {/* Toggle Switch untuk Auto-save */}
                           <div className="mb-4 flex items-center gap-2">
                             <label className="text-sm font-medium">
                               Auto-save: {isAutoSaveEnabled ? "On" : "Off"}
@@ -219,7 +240,6 @@ export const ChapterDescriptionForm = ({
                             </button>
                           </div>
 
-                          {/* Tombol Generate Saran */}
                           <div className="mb-4">
                             <Button
                               type="button"
@@ -233,7 +253,27 @@ export const ChapterDescriptionForm = ({
                             </Button>
                           </div>
 
-                          {/* Tampilkan Saran AI */}
+                          <div className="mb-4">
+                            <input
+                              type="file"
+                              accept=".docx,.pdf"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleFileUpload(e.target.files[0]);
+                                }
+                              }}
+                              className="hidden"
+                              id="file-upload"
+                            />
+                            <label
+                              htmlFor="file-upload"
+                              className="flex items-center gap-x-2 text-sm font-medium text-slate-600 hover:text-slate-800 cursor-pointer"
+                            >
+                              <Upload className="h-4 w-4" />
+                              Upload Word/PDF
+                            </label>
+                          </div>
+
                           {suggestions.length > 0 && (
                             <div className="space-y-2 mb-4">
                               <p className="text-sm text-slate-600">Saran Deskripsi:</p>
