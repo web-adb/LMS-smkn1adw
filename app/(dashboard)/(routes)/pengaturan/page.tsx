@@ -1,7 +1,7 @@
 "use client";
 
 import { UserButton, useUser } from "@clerk/nextjs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     User,
     Lock,
@@ -29,6 +29,14 @@ export default function PengaturanPage() {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    // Update username and email when user data changes
+    useEffect(() => {
+        if (user) {
+            setUsername(user.username || "");
+            setEmail(user.primaryEmailAddress?.emailAddress || "");
+        }
+    }, [user]);
+
     const handleUpdateProfile = async () => {
         if (!user) {
             setErrorMessage("Anda harus login untuk memperbarui profil.");
@@ -36,13 +44,27 @@ export default function PengaturanPage() {
         }
 
         try {
-            // Update username using the `update` method
-            await user.update({
-                username,
+            const response = await fetch('/api/users', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: user.id,
+                    username,
+                }),
             });
-            setSuccessMessage("Profil berhasil diperbarui!");
-            setErrorMessage("");
-            setIsEditingUsername(false); // Disable edit mode after success
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setSuccessMessage(data.message || "Profil berhasil diperbarui!");
+                setErrorMessage("");
+                setIsEditingUsername(false);
+            } else {
+                setErrorMessage(data.error || "Gagal memperbarui profil.");
+                setSuccessMessage("");
+            }
         } catch (error) {
             console.error("Gagal memperbarui profil:", error);
             setErrorMessage("Gagal memperbarui profil.");
@@ -63,13 +85,27 @@ export default function PengaturanPage() {
         }
 
         try {
-            // Update password using the `updatePassword` method
-            await user.updatePassword({
-                currentPassword: oldPassword,
-                newPassword,
+            const response = await fetch('/api/users', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: user.id,
+                    oldPassword,
+                    newPassword,
+                }),
             });
-            setSuccessMessage("Kata sandi berhasil diperbarui!");
-            setErrorMessage("");
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setSuccessMessage(data.message || "Kata sandi berhasil diperbarui!");
+                setErrorMessage("");
+            } else {
+                setErrorMessage(data.error || "Gagal memperbarui kata sandi.");
+                setSuccessMessage("");
+            }
         } catch (error) {
             console.error("Gagal memperbarui kata sandi:", error);
             setErrorMessage("Gagal memperbarui kata sandi. Pastikan kata sandi lama benar.");
