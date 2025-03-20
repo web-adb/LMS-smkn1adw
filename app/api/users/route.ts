@@ -9,9 +9,10 @@ export async function GET() {
         // Format data untuk dikembalikan
         const formattedUsers = users.map((user) => ({
             id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.emailAddresses[0]?.emailAddress,
+            firstName: user.firstName || 'Nama Depan Tidak Tersedia', // Default jika null/undefined
+            lastName: user.lastName || 'Nama Belakang Tidak Tersedia', // Default jika null/undefined
+            email: user.emailAddresses[0]?.emailAddress || 'Email Tidak Tersedia', // Default jika null/undefined
+            profileImageUrl: user.imageUrl || '/default-profile.png', // Default jika null/undefined
         }));
 
         return NextResponse.json(formattedUsers);

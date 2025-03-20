@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Compass, Layout, List, Eye, UserRoundCheck, Award, Settings, HelpCircle, MessageSquare, Calendar, Trophy, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { BarChart, Compass, Layout, List, Eye, UserRoundCheck, Award, Settings, HelpCircle, MessageSquare, Calendar, Trophy, Clock, ChevronDown, ChevronUp, BookText, ScrollText } from "lucide-react";
 import { SidebarItem } from "./sidebar-item";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -65,13 +65,13 @@ const teacherRoutes = [
     href: "/teacher/courses",
   },
   {
-    icon: List,
-    label: "Tugas & Ujian",
+    icon: BookText,
+    label: "Tugas & Quiz",
     href: "/teacher/tugas-ujian"
   },
   {
     icon: Calendar,
-    label: "Penjadwalan Kelas",
+    label: "Penjadwalan",
     href: "/teacher/penjadwalan-kelas"
   },
   {
@@ -90,7 +90,7 @@ const teacherRoutes = [
     href: "/teacher/statistik",
   },
   {
-    icon: BarChart,
+    icon: ScrollText,
     label: "Laporan Kinerja",
     href: "/teacher/laporan-kinerja"
   },
