@@ -4,7 +4,7 @@ import * as z from "zod";
 import axios from "axios";
 import MuxPlayer from "@mux/mux-player-react";
 import { Pencil, PlusCircle, Video } from "lucide-react";
-import { useState, useEffect } from "react"; // Tambahkan useEffect
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { Chapter, MuxData } from "@prisma/client";
@@ -14,9 +14,15 @@ import { FileUpload } from "@/components/file-upload";
 import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
-  videoUrl: z.string().optional(),
-  youtubeUrl: z.string().optional(),
+  videoUrl: z.string().nullable().optional(), // Mengizinkan null atau string
+  youtubeUrl: z.string().nullable().optional(), // Mengizinkan null atau string
 });
+
+interface ChapterVideoFormProps {
+  initialData: Chapter & { muxData?: MuxData | null };
+  courseId: string;
+  chapterId: string;
+}
 
 export const ChapterVideoForm = ({
   initialData,
@@ -79,7 +85,7 @@ export const ChapterVideoForm = ({
               <MuxPlayer playbackId={initialData?.muxData?.playbackId || ""} />
             ) : (
               <iframe
-                src={`https://www.youtube.com/embed/${extractYouTubeId(initialData.youtubeUrl)}`}
+                src={`https://www.youtube.com/embed/${extractYouTubeId(initialData.youtubeUrl || "")}`}
                 className="w-full h-full rounded-md"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

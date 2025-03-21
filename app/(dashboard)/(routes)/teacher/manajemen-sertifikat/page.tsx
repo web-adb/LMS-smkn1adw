@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { Upload, User, FileText, Image, Loader2, ArrowRight, ArrowLeft, X } from 'lucide-react'; // Impor ikon dari Lucide
+import { Upload, User, FileText, Image, Loader2, ArrowRight, ArrowLeft, X } from 'lucide-react';
 
 interface User {
   id: string;
@@ -21,10 +21,9 @@ const UploadCertificatePage: React.FC = () => {
   const [availableStudents, setAvailableStudents] = useState<User[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [pasteArea, setPasteArea] = useState(''); // State untuk area paste
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false); // State untuk pop-up berhasil
+  const [pasteArea, setPasteArea] = useState('');
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
-  // Mengambil daftar pengguna dari Clerk
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -42,40 +41,33 @@ const UploadCertificatePage: React.FC = () => {
     fetchUsers();
   }, []);
 
-  // Handler untuk memindahkan murid ke daftar dipilih
   const moveSelected = (students: User[], target: User[], setTarget: React.Dispatch<React.SetStateAction<User[]>>) => {
     setAvailableStudents(availableStudents.filter((student) => !students.includes(student)));
     setTarget([...target, ...students]);
   };
 
-  // Handler untuk menghapus murid dari daftar dipilih
   const removeSelected = (students: User[], target: User[], setTarget: React.Dispatch<React.SetStateAction<User[]>>) => {
     setSelectedStudents(selectedStudents.filter((student) => !students.includes(student)));
     setTarget([...target, ...students]);
   };
 
-  // Handler untuk memproses daftar murid yang di-paste
   const handlePaste = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const pastedText = e.target.value;
     setPasteArea(pastedText);
 
-    // Memisahkan teks yang di-paste menjadi array email
     const emails = pastedText
-      .split('\n') // Pisahkan berdasarkan baris baru
-      .map((email) => email.trim()) // Hilangkan spasi di awal dan akhir
-      .filter((email) => email !== ''); // Hapus baris kosong
+      .split('\n')
+      .map((email) => email.trim())
+      .filter((email) => email !== '');
 
-    // Cari murid yang sesuai dengan email yang di-paste
     const matchedStudents = availableStudents.filter((student) =>
-      emails.includes(student.email)
+      student.email && emails.includes(student.email)
     );
 
-    // Tambahkan murid yang ditemukan ke daftar dipilih
     setSelectedStudents([...selectedStudents, ...matchedStudents]);
     setAvailableStudents(availableStudents.filter((student) => !matchedStudents.includes(student)));
   };
 
-  // Handler untuk mengembalikan murid ke daftar tersedia (undo)
   const handleUndo = (student: User) => {
     setSelectedStudents(selectedStudents.filter((s) => s.id !== student.id));
     setAvailableStudents([...availableStudents, student]);
@@ -95,15 +87,15 @@ const UploadCertificatePage: React.FC = () => {
           title,
           description,
           imageUrl,
-          studentEmails: selectedStudents.map((student) => student.email),
+          studentEmails: selectedStudents.map((student) => student.email).filter(Boolean), // Pastikan email tidak undefined
           teacherId: userId,
         }),
       });
 
       if (response.ok) {
-        setShowSuccessPopup(true); // Tampilkan pop-up berhasil
+        setShowSuccessPopup(true);
         setTimeout(() => {
-          setShowSuccessPopup(false); // Sembunyikan pop-up setelah 3 detik
+          setShowSuccessPopup(false);
           router.push('/teacher/certificates');
         }, 3000);
       } else {
@@ -124,7 +116,6 @@ const UploadCertificatePage: React.FC = () => {
           <Upload className="w-6 h-6" /> Upload Sertifikat untuk Siswa
         </h1>
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-          {/* Input Judul Sertifikat */}
           <div className="mb-6">
             <label className="block text-gray-700 mb-2 flex items-center gap-2">
               <FileText className="w-5 h-5" /> Judul Sertifikat
@@ -138,7 +129,6 @@ const UploadCertificatePage: React.FC = () => {
             />
           </div>
 
-          {/* Input Deskripsi */}
           <div className="mb-6">
             <label className="block text-gray-700 mb-2 flex items-center gap-2">
               <FileText className="w-5 h-5" /> Deskripsi
@@ -151,7 +141,6 @@ const UploadCertificatePage: React.FC = () => {
             />
           </div>
 
-          {/* Input URL Gambar Sertifikat */}
           <div className="mb-6">
             <label className="block text-gray-700 mb-2 flex items-center gap-2">
               <Image className="w-5 h-5" /> URL Gambar Sertifikat
@@ -165,13 +154,11 @@ const UploadCertificatePage: React.FC = () => {
             />
           </div>
 
-          {/* Pilih Siswa */}
           <div className="mb-6">
             <label className="block text-gray-700 mb-2 flex items-center gap-2">
               <User className="w-5 h-5" /> Pilih Siswa
             </label>
             <div className="flex gap-4">
-              {/* Daftar Murid Tersedia */}
               <div className="w-1/2">
                 <h3 className="text-lg font-semibold mb-2">Daftar Murid</h3>
                 <select
@@ -179,21 +166,22 @@ const UploadCertificatePage: React.FC = () => {
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
                 >
                   {availableStudents.map((student) => (
-                    <option key={student.id} value={student.email}>
+                    <option key={student.id} value={student.email || ''}>
                       {`${student.firstName || ''} ${student.lastName || ''} (${student.email})`}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Tombol Pindah */}
               <div className="flex flex-col justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
-                    const selected = Array.from(
-                      document.querySelector('select:first-of-type')?.selectedOptions || []
-                    ).map((option) => availableStudents.find((student) => student.email === option.value)!);
+                    const selectElement = document.querySelector('select:first-of-type') as HTMLSelectElement;
+                    const selected = Array.from(selectElement.selectedOptions).map((option: HTMLOptionElement) => {
+                      const email = option.value;
+                      return availableStudents.find((student) => student.email === email)!;
+                    });
                     moveSelected(selected, selectedStudents, setSelectedStudents);
                   }}
                   className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
@@ -203,9 +191,11 @@ const UploadCertificatePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const selected = Array.from(
-                      document.querySelector('select:last-of-type')?.selectedOptions || []
-                    ).map((option) => selectedStudents.find((student) => student.email === option.value)!);
+                    const selectElement = document.querySelector('select:last-of-type') as HTMLSelectElement;
+                    const selected = Array.from(selectElement.selectedOptions).map((option: HTMLOptionElement) => {
+                      const email = option.value;
+                      return selectedStudents.find((student) => student.email === email)!;
+                    });
                     removeSelected(selected, availableStudents, setAvailableStudents);
                   }}
                   className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
@@ -214,7 +204,6 @@ const UploadCertificatePage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Daftar Murid Dipilih */}
               <div className="w-1/2">
                 <h3 className="text-lg font-semibold mb-2">Murid Dipilih</h3>
                 <select
@@ -222,7 +211,7 @@ const UploadCertificatePage: React.FC = () => {
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
                 >
                   {selectedStudents.map((student) => (
-                    <option key={student.id} value={student.email}>
+                    <option key={student.id} value={student.email || ''}>
                       {`${student.firstName || ''} ${student.lastName || ''} (${student.email})`}
                     </option>
                   ))}
@@ -231,7 +220,6 @@ const UploadCertificatePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Area Paste Daftar Murid */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">Tempel Daftar Murid</h3>
             <textarea
@@ -242,7 +230,6 @@ const UploadCertificatePage: React.FC = () => {
             />
           </div>
 
-          {/* Area Kosong untuk Daftar Murid Dipilih */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">Daftar Murid Dipilih</h3>
             <div className="bg-gray-50 p-4 rounded-md">
@@ -263,7 +250,6 @@ const UploadCertificatePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Tombol Upload */}
           <button
             type="submit"
             disabled={isLoading}
@@ -282,7 +268,6 @@ const UploadCertificatePage: React.FC = () => {
         </form>
       </div>
 
-      {/* Pop-up Berhasil */}
       {showSuccessPopup && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-md text-center">

@@ -24,23 +24,13 @@ export async function GET() {
 // Handler untuk PUT (memperbarui data pengguna)
 export async function PUT(request: Request) {
     try {
-        const { userId, username, oldPassword, newPassword } = await request.json();
+        const { userId, username, password } = await request.json();
 
-        // Perbarui username
-        if (username) {
-            await clerkClient.users.updateUser(userId, {
-                username,
-            });
-        }
-
-        // Perbarui password
-        if (oldPassword && newPassword) {
-            await clerkClient.users.updateUserPassword({
-                userId,
-                currentPassword: oldPassword,
-                newPassword,
-            });
-        }
+        // Perbarui username dan password
+        await clerkClient.users.updateUser(userId, {
+            username: username || undefined, // Jika username tidak disediakan, tetap undefined
+            password: password || undefined, // Jika password tidak disediakan, tetap undefined
+        });
 
         return NextResponse.json({ success: true, message: 'Profil berhasil diperbarui!' });
     } catch (error) {

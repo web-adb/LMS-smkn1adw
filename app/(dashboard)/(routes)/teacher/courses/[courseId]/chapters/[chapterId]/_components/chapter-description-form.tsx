@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { Chapter } from "@prisma/client";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import mammoth from "mammoth";
-import { PDFDocument } from "pdf-lib";
+import * as pdfjsLib from "pdfjs-dist";
 
 import {
   Form,
@@ -98,10 +98,10 @@ export const ChapterDescriptionForm = ({
 
   const applySuggestion = (suggestion: string) => {
     if (!editorRef.current) return;
-  
+
     const editor = editorRef.current.getEditor();
     const range = editor.getSelection();
-  
+
     if (range) {
       editor.deleteText(range.index, range.length);
       editor.insertText(range.index, suggestion);
@@ -126,22 +126,35 @@ export const ChapterDescriptionForm = ({
       let htmlContent = "";
 
       if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+        // Handle Word documents
         const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
         htmlContent = result.value;
       } else if (file.type === "application/pdf") {
-        const pdfDoc = await PDFDocument.load(await file.arrayBuffer());
-        const pages = pdfDoc.getPages();
-        htmlContent = pages.map((page) => page.getTextContent()).join("\n");
+        // Handle PDF files
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument(new Uint8Array(arrayBuffer));
+        const pdf = await loadingTask.promise;
+
+        let textContent = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent();
+          textContent += text.items.map((item: any) => item.str).join(" ");
+        }
+
+        htmlContent = textContent;
       } else {
         toast.error("Format file tidak didukung.");
         return;
       }
 
+      // Insert the extracted content into the editor
       if (editorRef.current) {
         const editor = editorRef.current.getEditor();
         editor.clipboard.dangerouslyPasteHTML(htmlContent);
       }
     } catch (error) {
+      console.error("Error uploading file:", error);
       toast.error("Gagal mengupload file.");
     }
   };

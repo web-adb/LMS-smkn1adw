@@ -80,11 +80,6 @@ const teacherRoutes = [
     href: "/teacher/daftar-siswa",
   },
   {
-    icon: BarChart,
-    label: "Analytics",
-    href: "/teacher/analytics",
-  },
-  {
     icon: Eye,
     label: "Statistik",
     href: "/teacher/statistik",

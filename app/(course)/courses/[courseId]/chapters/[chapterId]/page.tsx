@@ -61,6 +61,7 @@ const ChapterIdPage = async (
                         playbackId={muxData?.playbackId!}
                         completeOnEnd={completeOnEnd}
                         isLocked={isLocked}
+                        youtubeUrl="" // Pass an empty string or a default value
                     />
                 </div>
                 <div>

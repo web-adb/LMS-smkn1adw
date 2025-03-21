@@ -84,18 +84,15 @@ const GuruTugasPage: React.FC = () => {
     const pastedText = e.target.value;
     setPasteArea(pastedText);
 
-    // Memisahkan teks yang di-paste menjadi array email
     const emails = pastedText
-      .split('\n') // Pisahkan berdasarkan baris baru
-      .map((email) => email.trim()) // Hilangkan spasi di awal dan akhir
-      .filter((email) => email !== ''); // Hapus baris kosong
+      .split('\n')
+      .map((email) => email.trim())
+      .filter((email) => email !== '');
 
-    // Cari murid yang sesuai dengan email yang di-paste
     const matchedStudents = availableStudents.filter((student) =>
-      emails.includes(student.email)
+      student.email && emails.includes(student.email)
     );
 
-    // Tambahkan murid yang ditemukan ke daftar dipilih
     setSelectedStudents([...selectedStudents, ...matchedStudents]);
     setAvailableStudents(availableStudents.filter((student) => !matchedStudents.includes(student)));
   };
@@ -219,7 +216,7 @@ const GuruTugasPage: React.FC = () => {
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
                     >
                       {availableStudents.map((student) => (
-                        <option key={student.id} value={student.email}>
+                        <option key={student.id} value={student.email || ''}>
                           {`${student.firstName || ''} ${student.lastName || ''} (${student.email})`}
                         </option>
                       ))}
@@ -231,9 +228,11 @@ const GuruTugasPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const selected = Array.from(
-                          document.querySelector('select:first-of-type')?.selectedOptions || []
-                        ).map((option) => availableStudents.find((student) => student.email === option.value)!);
+                        const selectElement = document.querySelector('select:first-of-type') as HTMLSelectElement;
+                        const selected = Array.from(selectElement.selectedOptions).map((option: HTMLOptionElement) => {
+                          const email = option.value;
+                          return availableStudents.find((student) => student.email === email)!;
+                        });
                         moveSelected(selected, selectedStudents, setSelectedStudents);
                       }}
                       className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
@@ -243,9 +242,11 @@ const GuruTugasPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const selected = Array.from(
-                          document.querySelector('select:last-of-type')?.selectedOptions || []
-                        ).map((option) => selectedStudents.find((student) => student.email === option.value)!);
+                        const selectElement = document.querySelector('select:last-of-type') as HTMLSelectElement;
+                        const selected = Array.from(selectElement.selectedOptions).map((option: HTMLOptionElement) => {
+                          const email = option.value;
+                          return selectedStudents.find((student) => student.email === email)!;
+                        });
                         removeSelected(selected, availableStudents, setAvailableStudents);
                       }}
                       className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
@@ -262,7 +263,7 @@ const GuruTugasPage: React.FC = () => {
                       className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
                     >
                       {selectedStudents.map((student) => (
-                        <option key={student.id} value={student.email}>
+                        <option key={student.id} value={student.email || ''}>
                           {`${student.firstName || ''} ${student.lastName || ''} (${student.email})`}
                         </option>
                       ))}
