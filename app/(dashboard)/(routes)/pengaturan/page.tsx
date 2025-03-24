@@ -142,7 +142,7 @@ export default function PengaturanPage() {
                 </h2>
                 <div className="space-y-4">
                     <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 flex items-center justify-center">
+                        <div className="flex items-center justify-center">
                             <UserButton afterSignOutUrl="/" />
                         </div>
                         <div>
@@ -202,6 +202,7 @@ export default function PengaturanPage() {
                                 value={oldPassword}
                                 onChange={(e) => setOldPassword(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                disabled
                             />
                             <button
                                 onClick={() => setShowOldPassword(!showOldPassword)}
@@ -219,6 +220,7 @@ export default function PengaturanPage() {
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                disabled
                             />
                             <button
                                 onClick={() => setShowNewPassword(!showNewPassword)}
@@ -236,6 +238,7 @@ export default function PengaturanPage() {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                disabled
                             />
                             <button
                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -270,7 +273,6 @@ export default function PengaturanPage() {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                         >
                             <option value="id">Bahasa Indonesia</option>
-                            <option value="en">English</option>
                         </select>
                     </div>
                     <div>
@@ -280,8 +282,7 @@ export default function PengaturanPage() {
                             onChange={(e) => setTheme(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                         >
-                            <option value="light">Light</option>
-                            <option value="dark">Dark</option>
+                            <option value="light">Terang</option>
                         </select>
                     </div>
                     <button className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm hover:bg-indigo-700 transition-colors flex items-center justify-center">

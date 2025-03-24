@@ -35,13 +35,13 @@ const CalendarAdmin: React.FC = () => {
   const { isOpen, openModal, closeModal } = useModal();
 
   const calendarsEvents = {
-    Danger: "danger",
-    Success: "success",
-    Primary: "primary",
-    Warning: "warning",
+    Bahaya: "danger",
+    Sukses: "success",
+    Primer: "primary",
+    Peringatan: "warning",
   };
 
-  // Fetch events from the API on component mount
+  // Mengambil event dari API saat komponen dimuat
   useEffect(() => {
     const fetchEvents = async () => {
       setIsLoading(true);
@@ -95,7 +95,7 @@ const CalendarAdmin: React.FC = () => {
     setNotification({ type: "loading", message: "Menyimpan event..." });
   
     const eventData = {
-      title: eventTitle, // Pastikan ini adalah nilai yang benar
+      title: eventTitle,
       startDate: eventStartDate,
       endDate: eventEndDate,
       level: eventLevel,
@@ -103,7 +103,7 @@ const CalendarAdmin: React.FC = () => {
   
     try {
       if (selectedEvent) {
-        // Update existing event
+        // Update event yang sudah ada
         const response = await fetch("/api/events", {
           method: "PUT",
           headers: {
@@ -119,7 +119,7 @@ const CalendarAdmin: React.FC = () => {
               event.id === selectedEvent.id
                 ? {
                     ...event,
-                    title: updatedEvent.title, // Pastikan ini adalah nilai yang benar
+                    title: updatedEvent.title,
                     start: updatedEvent.startDate,
                     end: updatedEvent.endDate,
                     extendedProps: { calendar: updatedEvent.level },
@@ -130,7 +130,7 @@ const CalendarAdmin: React.FC = () => {
           setNotification({ type: "success", message: "Event berhasil diperbarui!" });
         }
       } else {
-        // Add new event
+        // Tambah event baru
         const response = await fetch("/api/events", {
           method: "POST",
           headers: {
@@ -145,7 +145,7 @@ const CalendarAdmin: React.FC = () => {
             ...prevEvents,
             {
               id: newEvent.id,
-              title: newEvent.title, // Pastikan ini adalah nilai yang benar
+              title: newEvent.title,
               start: newEvent.startDate,
               end: newEvent.endDate,
               extendedProps: { calendar: newEvent.level },
@@ -204,7 +204,7 @@ const CalendarAdmin: React.FC = () => {
 
   return (
     <div className="p-6  bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      {/* Notification Popup */}
+      {/* Popup Notifikasi */}
       {notification && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div
@@ -262,7 +262,7 @@ const CalendarAdmin: React.FC = () => {
           eventContent={renderEventContent}
           customButtons={{
             addEventButton: {
-              text: "Add Event +",
+              text: "Tambah Event +",
               click: openModal,
             },
           }}
@@ -276,18 +276,17 @@ const CalendarAdmin: React.FC = () => {
         <div className="flex flex-col px-2 overflow-y-auto custom-scrollbar">
           <div>
             <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white lg:text-2xl">
-              {selectedEvent ? "Edit Event" : "Add Event"}
+              {selectedEvent ? "Edit Event" : "Tambah Event"}
             </h5>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Plan your next big moment: schedule or edit an event to stay on
-              track
+              Rencanakan momen penting Anda: jadwalkan atau edit event untuk tetap terorganisir.
             </p>
           </div>
           <div className="mt-8">
             <div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Event Title
+                  Judul Event
                 </label>
                 <input
                   id="event-title"
@@ -300,7 +299,7 @@ const CalendarAdmin: React.FC = () => {
             </div>
             <div className="mt-6">
               <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
-                Event Color
+                Warna Event
               </label>
               <div className="flex flex-wrap items-center gap-4 sm:gap-5">
                 {Object.entries(calendarsEvents).map(([key, value]) => (
@@ -336,7 +335,7 @@ const CalendarAdmin: React.FC = () => {
 
             <div className="mt-6">
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Enter Start Date
+                Tanggal Mulai
               </label>
               <div className="relative">
                 <input
@@ -351,7 +350,7 @@ const CalendarAdmin: React.FC = () => {
 
             <div className="mt-6">
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Enter End Date
+                Tanggal Berakhir
               </label>
               <div className="relative">
                 <input
@@ -371,7 +370,7 @@ const CalendarAdmin: React.FC = () => {
                 type="button"
                 className="flex w-full justify-center rounded-lg border border-red-500 bg-red-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-600 sm:w-auto"
               >
-                Delete Event
+                Hapus Event
               </button>
             )}
             <button
@@ -379,14 +378,14 @@ const CalendarAdmin: React.FC = () => {
               type="button"
               className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
             >
-              Close
+              Tutup
             </button>
             <button
               onClick={handleAddOrUpdateEvent}
               type="button"
-              className="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
+              className="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-brand-600 sm:w-auto"
             >
-              {selectedEvent ? "Update Changes" : "Add Event"}
+              {selectedEvent ? "Perbarui Perubahan" : "Tambah Event"}
             </button>
           </div>
         </div>

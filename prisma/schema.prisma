@@ -24,6 +24,7 @@ model Course {
   chapters    Chapter[]
   attachments Attachment[]
   purchases   Purchase[]
+  quizzes     Quiz[]       @relation("CourseQuizzes") // Relasi ke Quiz
 
   @@index([categoryId])
   @@fulltext([title])
@@ -52,7 +53,7 @@ model Chapter {
   title        String
   description  String?        @db.Text
   videoUrl     String?        @db.Text
-  youtubeUrl   String?        @db.Text // Tambahkan ini
+  youtubeUrl   String?        @db.Text
   position     Int
   isPublished  Boolean        @default(false)
   isFree       Boolean        @default(false)
@@ -136,7 +137,6 @@ model Event {
   updatedAt DateTime @updatedAt
 }
 
-
 model Certificate {
   id          String   @id @default(cuid())
   title       String
@@ -145,13 +145,73 @@ model Certificate {
   date        DateTime
   userId      String   // Siswa yang menerima sertifikat
   teacherId   String   // Guru yang mengupload sertifikat
-  user        User     @relation(fields: [userId], references: [id], name: "StudentCertificate") // Relasi ke siswa
-  teacher     User     @relation(fields: [teacherId], references: [id], name: "TeacherCertificate") // Relasi ke guru
+  user        User     @relation(fields: [userId], references: [id], name: "StudentCertificate")
+  teacher     User     @relation(fields: [teacherId], references: [id], name: "TeacherCertificate")
+}
+
+model Quiz {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  courseId    String?
+  kelas       String
+  duration    Int        @default(60) // dalam menit
+  deadline    DateTime
+  isRandomized Boolean   @default(false)
+  showScore   Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  questions   Question[]
+  course      Course?    @relation(fields: [courseId], references: [id], name: "CourseQuizzes")
+  results     QuizResult[]
+  userId      String     // ID pembuat quiz
+  user        User       @relation(fields: [userId], references: [id], name: "QuizCreator")
+
+  @@index([courseId])
+  @@index([userId])
+}
+
+model Question {
+  id          String   @id @default(uuid())
+  text        String
+  type        QuestionType @default(multiple_choice)
+  options     String   // Disimpan sebagai JSON string
+  correctAnswer Int
+  points      Int      @default(1)
+  quizId      String
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([quizId])
+}
+
+enum QuestionType {
+  multiple_choice
+  true_false
+  short_answer
+}
+
+model QuizResult {
+  id         String   @id @default(uuid())
+  quizId     String
+  userId     String
+  score      Float
+  answers    Json     // Menyimpan jawaban user
+  submittedAt DateTime @default(now())
+  quiz       Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], name: "QuizParticipant")
+
+  @@unique([quizId, userId])
+  @@index([quizId])
+  @@index([userId])
 }
 
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
-  certificates Certificate[] @relation("StudentCertificate") // Relasi ke sertifikat yang diterima
-  taughtCertificates Certificate[] @relation("TeacherCertificate") // Relasi ke sertifikat yang diupload
+  certificates Certificate[] @relation("StudentCertificate")
+  taughtCertificates Certificate[] @relation("TeacherCertificate")
+  createdQuizzes Quiz[]      @relation("QuizCreator")
+  quizResults  QuizResult[]  @relation("QuizParticipant")
 }

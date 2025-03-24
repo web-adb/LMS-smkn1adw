@@ -37,7 +37,7 @@ export const SidebarItem = ({
         "hover:bg-slate-100/70 hover:shadow-sm rounded-lg",
         isActive && "bg-gradient-to-r from-sky-50 to-blue-50 shadow-md"
       )}
-      whileTap={{ scale: 0.85 }} // Efek klik (scale down)
+      // whileTap={{ scale: 0.85 }} // Efek klik (scale down)
       initial={{ opacity: 0, y: -10 }} // Animasi fade in awal
       animate={{ opacity: 1, y: 0 }} // Animasi fade in saat muncul
       exit={{ opacity: 0, y: -10 }} // Animasi fade out saat menghilang
