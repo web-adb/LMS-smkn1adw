@@ -47,7 +47,7 @@ export async function POST(
     });
 
     if (existingResult) {
-      return new NextResponse('You have already submitted this quiz', { status: 400 });
+      return new NextResponse('Anda Telah Menyelesaikan Quiz Tersebut', { status: 400 });
     }
 
     // Dapatkan quiz dengan pertanyaan untuk validasi

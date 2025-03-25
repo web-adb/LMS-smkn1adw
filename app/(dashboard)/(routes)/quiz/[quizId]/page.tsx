@@ -7,10 +7,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { Check, Clock, AlertCircle, BookOpen } from "lucide-react";
+import { Check, Clock, AlertCircle, BookOpen, CheckCircle, X } from "lucide-react";
 import { toast } from 'react-hot-toast';
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 
 type Question = {
   id: string;
@@ -30,18 +38,23 @@ type Quiz = {
   questions: Question[];
 };
 
-type AnswerResult = {
+type AnswerDetail = {
   questionId: string;
+  questionText: string;
   userAnswer: any;
+  correctAnswer: any;
   isCorrect: boolean;
   points: number;
+  maxPoints: number;
 };
 
 type QuizResult = {
   id: string;
   score: number;
   correctAnswers: number;
-  answers: AnswerResult[];
+  totalQuestions: number;
+  details: AnswerDetail[];
+  submittedAt: string;
 };
 
 export default function StudentQuizPage() {
@@ -50,54 +63,50 @@ export default function StudentQuizPage() {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string | number>>({});
+  const [answers, setAnswers] = useState<Record<string, string | number | boolean>>({});
   const [timeLeft, setTimeLeft] = useState(0);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<QuizResult | null>(null);
+  const [deadlinePassed, setDeadlinePassed] = useState(false);
+  const [showAlreadySubmittedModal, setShowAlreadySubmittedModal] = useState(false);
 
-  // Fetch quiz data
+  // Fetch quiz data and check submission status
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/quizzes/${quizId}`);
         
-        if (!response.ok) {
+        // Check quiz deadline first
+        const quizResponse = await fetch(`/api/quizzes/${quizId}`);
+        if (!quizResponse.ok) {
           throw new Error('Gagal memuat quiz');
         }
 
-        const data = await response.json();
-        setQuiz(data);
-        setTimeLeft(data.duration * 60);
-        
+        const quizData = await quizResponse.json();
+        setQuiz(quizData);
+        setTimeLeft(quizData.duration * 60);
+
+        // Check if deadline has passed
+        if (new Date(quizData.deadline) < new Date()) {
+          setDeadlinePassed(true);
+          setLoading(false);
+          return;
+        }
+
         // Check if user already submitted
-        const resultResponse = await fetch(`/api/quizzes/${quizId}/results`);
+        const resultResponse = await fetch(`/api/quizzes/${quizId}/results/me`);
         if (resultResponse.ok) {
           const resultData = await resultResponse.json();
-          if (resultData.results?.length > 0) {
-            const submittedResult = resultData.results[0];
-            
-            // Parse answers safely
-            let parsedAnswers: AnswerResult[] = [];
-            try {
-              parsedAnswers = typeof submittedResult.answers === 'string' 
-                ? JSON.parse(submittedResult.answers)
-                : submittedResult.answers || [];
-            } catch (e) {
-              console.error("Error parsing answers:", e);
-              parsedAnswers = [];
-            }
-            
+          
+          if (resultData.submitted) {
             setSubmitted(true);
-            setResult({
-              ...submittedResult,
-              answers: parsedAnswers
-            });
-
+            setResult(resultData.result);
+            setShowAlreadySubmittedModal(true);
+            
             // Pre-fill answers for review
-            const prefilledAnswers: Record<string, string | number> = {};
-            parsedAnswers.forEach((answer) => {
+            const prefilledAnswers: Record<string, any> = {};
+            resultData.result.details.forEach((answer: AnswerDetail) => {
               prefilledAnswers[answer.questionId] = answer.userAnswer;
             });
             setAnswers(prefilledAnswers);
@@ -120,7 +129,7 @@ export default function StudentQuizPage() {
 
   // Timer effect
   useEffect(() => {
-    if (quiz && !submitted && timeLeft > 0) {
+    if (quiz && !submitted && timeLeft > 0 && !deadlinePassed) {
       const newTimer = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -135,9 +144,10 @@ export default function StudentQuizPage() {
 
       return () => clearInterval(newTimer);
     }
-  }, [quiz, submitted]);
+  }, [quiz, submitted, deadlinePassed]);
 
-  const handleAnswerChange = (questionId: string, answer: string | number) => {
+  const handleAnswerChange = (questionId: string, answer: string | number | boolean) => {
+    if (submitted || deadlinePassed) return;
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
@@ -145,7 +155,7 @@ export default function StudentQuizPage() {
   };
 
   const handleSubmit = async () => {
-    if (submitted) return;
+    if (submitted || deadlinePassed) return;
     
     try {
       setLoading(true);
@@ -173,19 +183,13 @@ export default function StudentQuizPage() {
 
       const resultData = await response.json();
       
-      // Parse answers safely
-      let parsedAnswers: AnswerResult[] = [];
-      try {
-        parsedAnswers = typeof resultData.details === 'string' 
-          ? JSON.parse(resultData.details)
-          : resultData.details || [];
-      } catch (e) {
-        console.error("Error parsing result answers:", e);
-      }
-
       setResult({
-        ...resultData,
-        answers: parsedAnswers
+        id: resultData.resultId,
+        score: resultData.score,
+        correctAnswers: resultData.correctAnswers,
+        totalQuestions: resultData.totalQuestions,
+        details: resultData.details,
+        submittedAt: new Date().toISOString()
       });
       setSubmitted(true);
       
@@ -248,8 +252,71 @@ export default function StudentQuizPage() {
     );
   }
 
+  if (deadlinePassed) {
+    return (
+      <div className="container mx-auto py-8 flex justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h2 className="text-xl font-bold mb-2">Batas Waktu Quiz Telah Berakhir</h2>
+          <p className="mb-4">
+            Batas waktu untuk mengumpulkan quiz ini telah berakhir pada{' '}
+            {new Date(quiz.deadline).toLocaleString('id-ID', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </p>
+          <Button onClick={() => router.push('/quiz')}>
+            Kembali ke Daftar Quiz
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
+      {/* Already Submitted Modal */}
+      <Dialog open={showAlreadySubmittedModal} onOpenChange={setShowAlreadySubmittedModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-6 h-6 text-green-500" />
+              Quiz Telah Dikumpulkan
+            </DialogTitle>
+            <DialogDescription>
+              Anda sudah menyelesaikan quiz ini sebelumnya.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center gap-4">
+              <Badge className="text-lg px-3 py-1">
+                {result?.score}%
+              </Badge>
+              <span>
+                {result?.correctAnswers} dari {quiz.questions.length} pertanyaan benar
+              </span>
+            </div>
+            <p className="text-sm text-gray-500">
+              Dikumpulkan pada: {result?.submittedAt ? new Date(result.submittedAt).toLocaleString('id-ID') : '-'}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              onClick={() => {
+                setShowAlreadySubmittedModal(false);
+                router.push('/quiz');
+              }}
+            >
+              Kembali ke Daftar Quiz
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Quiz Info */}
         <div className="lg:col-span-1 space-y-4">
@@ -275,47 +342,57 @@ export default function StudentQuizPage() {
                 </span>
               </div>
 
-              <div>
-                <Label>Batas Waktu:</Label>
-                <p className="text-sm">
-                  {new Date(quiz.deadline).toLocaleString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-
-              {!submitted && (
+              {submitted ? (
                 <div className="space-y-2">
-                  <Label>Waktu Tersisa:</Label>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-red-500" />
-                    <span className="font-medium">
-                      {formatTime(timeLeft)}
-                    </span>
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Telah Dikumpulkan</span>
                   </div>
-                  <Progress 
-                    value={(timeLeft / (quiz.duration * 60)) * 100} 
-                    className="h-2"
-                  />
+                  
+                  <div className="pt-2">
+                    <Label>Hasil:</Label>
+                    <div className="flex items-center gap-2">
+                      <Badge className="text-lg px-3 py-1">
+                        {result?.score}%
+                      </Badge>
+                    </div>
+                    <p className="text-sm">
+                      {result?.correctAnswers} dari {quiz.questions.length} pertanyaan benar
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Dikumpulkan pada: {result?.submittedAt ? new Date(result.submittedAt).toLocaleString('id-ID') : '-'}
+                    </p>
+                  </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  <div>
+                    <Label>Batas Waktu:</Label>
+                    <p className="text-sm">
+                      {new Date(quiz.deadline).toLocaleString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
 
-              {submitted && result && (
-                <div className="space-y-2">
-                  <Label>Hasil:</Label>
-                  <div className="flex items-center gap-2">
-                    <Badge className="text-lg px-3 py-1">
-                      {result.score}%
-                    </Badge>
+                  <div className="space-y-2">
+                    <Label>Waktu Tersisa:</Label>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-red-500" />
+                      <span className="font-medium">
+                        {formatTime(timeLeft)}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(timeLeft / (quiz.duration * 60)) * 100} 
+                      className="h-2"
+                    />
                   </div>
-                  <p className="text-sm">
-                    {result.correctAnswers} dari {quiz.questions.length} pertanyaan benar
-                  </p>
-                </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -333,11 +410,31 @@ export default function StudentQuizPage() {
 
         {/* Questions Section */}
         <div className="lg:col-span-3 space-y-6">
+          {submitted && (
+            <Card className="bg-green-50 border-green-200">
+              <CardHeader>
+                <CardTitle className="text-green-700 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Quiz Telah Dikumpulkan
+                </CardTitle>
+                <CardDescription>
+                  Anda telah menyelesaikan quiz ini dengan nilai {result?.score}%
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          )}
+
           {quiz.questions.map((question, index) => {
-            const questionResult = result?.answers?.find(a => a.questionId === question.id);
+            const questionResult = result?.details?.find(a => a.questionId === question.id);
+            const correctAnswer = question.type === 'short_answer' 
+              ? question.options[0] 
+              : question.options[question.correctAnswer];
             
             return (
-              <Card key={question.id} className="relative">
+              <Card 
+                key={question.id} 
+                className={`relative ${submitted ? (questionResult?.isCorrect ? 'border-green-100 bg-green-50' : 'border-red-100 bg-red-50') : ''}`}
+              >
                 {submitted && questionResult && (
                   <div className="absolute top-4 right-4">
                     {questionResult.isCorrect ? (
@@ -370,10 +467,10 @@ export default function StudentQuizPage() {
                           />
                           <Label htmlFor={`${question.id}-${optIndex}`}>
                             {option}
+                            {submitted && question.correctAnswer === optIndex && (
+                              <span className="ml-2 text-green-500">✓ Jawaban benar</span>
+                            )}
                           </Label>
-                          {submitted && question.correctAnswer === optIndex && (
-                            <span className="ml-2 text-green-500">✓ Jawaban benar</span>
-                          )}
                         </div>
                       ))}
                     </RadioGroup>
@@ -387,17 +484,21 @@ export default function StudentQuizPage() {
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="true" id={`${question.id}-true`} />
-                        <Label htmlFor={`${question.id}-true`}>Benar</Label>
-                        {submitted && question.correctAnswer === 1 && (
-                          <span className="ml-2 text-green-500">✓ Jawaban benar</span>
-                        )}
+                        <Label htmlFor={`${question.id}-true`}>
+                          Benar
+                          {submitted && question.correctAnswer === 1 && (
+                            <span className="ml-2 text-green-500">✓ Jawaban benar</span>
+                          )}
+                        </Label>
                       </div>
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="false" id={`${question.id}-false`} />
-                        <Label htmlFor={`${question.id}-false`}>Salah</Label>
-                        {submitted && question.correctAnswer === 0 && (
-                          <span className="ml-2 text-green-500">✓ Jawaban benar</span>
-                        )}
+                        <Label htmlFor={`${question.id}-false`}>
+                          Salah
+                          {submitted && question.correctAnswer === 0 && (
+                            <span className="ml-2 text-green-500">✓ Jawaban benar</span>
+                          )}
+                        </Label>
                       </div>
                     </RadioGroup>
                   )}
@@ -410,17 +511,20 @@ export default function StudentQuizPage() {
                         placeholder="Ketik jawaban Anda"
                         disabled={submitted}
                       />
-                      {submitted && question.options && (
+                      {submitted && (
                         <p className="text-sm text-gray-600">
-                          Jawaban benar: {question.options[question.correctAnswer]}
+                          Jawaban benar: {correctAnswer}
                         </p>
                       )}
                     </div>
                   )}
 
                   {submitted && questionResult && (
-                    <div className="text-sm text-gray-600 mt-2">
+                    <div className={`text-sm mt-2 ${questionResult.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                       Poin: {questionResult.points}/{question.points}
+                      {!questionResult.isCorrect && questionResult.userAnswer !== undefined && (
+                        <p className="mt-1">Jawaban Anda: {String(questionResult.userAnswer)}</p>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -436,23 +540,6 @@ export default function StudentQuizPage() {
                 disabled={loading || Object.keys(answers).length < quiz.questions.length}
               >
                 {loading ? 'Mengirim...' : 'Kumpulkan Quiz'}
-              </Button>
-            </div>
-          )}
-
-          {submitted && (
-            <div className="text-center py-8">
-              <h3 className="text-2xl font-bold mb-2">
-                Quiz Selesai!
-              </h3>
-              <p className="text-lg mb-4">
-                Nilai Anda: <span className="font-bold">{result?.score}%</span>
-              </p>
-              <p className="mb-6">
-                {result?.correctAnswers} dari {quiz.questions.length} pertanyaan benar
-              </p>
-              <Button onClick={() => router.push('/quiz')}>
-                Kembali ke Daftar Quiz
               </Button>
             </div>
           )}

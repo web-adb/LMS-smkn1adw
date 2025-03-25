@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs';
 import prisma from '@/lib/prisma';
 
-// GET - Ambil detail hasil quiz
 export async function GET(
   req: Request,
-  { params }: { params: { quizId: string; resultId: string } }
+  { params }: { params: { quizId: string } }
 ) {
   try {
     const { userId } = auth();
@@ -14,9 +13,31 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const result = await prisma.quizResult.findUnique({
+    // Verify the quiz belongs to the user
+    const quiz = await prisma.quiz.findUnique({
       where: {
-        id: params.resultId,
+        id: params.quizId,
+        userId
+      },
+      include: {
+        _count: {
+          select: { results: true }
+        },
+        course: {
+          select: {
+            title: true
+          }
+        }
+      }
+    });
+
+    if (!quiz) {
+      return new NextResponse('Quiz not found', { status: 404 });
+    }
+
+    // Get all results for this quiz with user details
+    const results = await prisma.quizResult.findMany({
+      where: {
         quizId: params.quizId
       },
       include: {
@@ -25,49 +46,43 @@ export async function GET(
             id: true,
             email: true
           }
-        },
-        quiz: {
-          include: {
-            questions: true
-          }
         }
+      },
+      orderBy: {
+        submittedAt: 'desc'
       }
     });
 
-    if (!result) {
-      return new NextResponse('Result not found', { status: 404 });
-    }
+    // Format results with parsed answers
+    const formattedResults = results.map(result => ({
+      ...result,
+      answers: typeof result.answers === 'string' ? JSON.parse(result.answers) : result.answers,
+      user: {
+        id: result.user.id,
+        name: result.user.email.split('@')[0], // Using email prefix as name
+        email: result.user.email
+      }
+    }));
 
-    // Cek apakah user berhak melihat hasil ini
-    if (result.userId !== userId && result.quiz.userId !== userId) {
-      return new NextResponse('Forbidden', { status: 403 });
-    }
-
-    // Parse answers dan gabungkan dengan pertanyaan
-    const answers = JSON.parse(result.answers as string);
-    const detailedResults = answers.map((answer: any) => {
-      const question = result.quiz.questions.find(q => q.id === answer.questionId);
-      return {
-        ...answer,
-        questionText: question?.text,
-        correctAnswer: question?.correctAnswer,
-        options: question ? JSON.parse(question.options) : []
-      };
-    });
+    // Calculate average score
+    const averageScore = results.length > 0 
+      ? results.reduce((sum, result) => sum + result.score, 0) / results.length
+      : 0;
 
     return NextResponse.json({
-      ...result,
-      answers: detailedResults,
-      quiz: {
-        ...result.quiz,
-        questions: result.quiz.questions.map(q => ({
-          ...q,
-          options: JSON.parse(q.options)
-        }))
+      results: formattedResults,
+      averageScore,
+      participantCount: quiz._count.results,
+      quizDetails: {
+        title: quiz.title,
+        description: quiz.description,
+        kelas: quiz.kelas,
+        deadline: quiz.deadline,
+        courseTitle: quiz.course?.title
       }
     });
   } catch (error) {
-    console.error('[QUIZ_RESULT_DETAIL_GET]', error);
+    console.error('[QUIZ_RESULTS_GET]', error);
     return new NextResponse('Internal Error', { status: 500 });
   }
 }

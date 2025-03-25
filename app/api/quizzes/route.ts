@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 
-// Schema validasi
+// Validation schema
 const quizSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
@@ -24,7 +24,7 @@ const quizSchema = z.object({
   ).min(1),
 });
 
-// GET - Ambil semua quiz dengan statistik
+// GET - Get all quizzes with statistics
 export async function GET(req: Request) {
   try {
     const { userId } = auth();
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
     const totalQuizzes = quizzes.length;
     const activeQuizzes = quizzes.filter(q => new Date(q.deadline) > new Date()).length;
     
-    // Count quizzes that need grading (quizzes with ungraded submissions)
+    // Count quizzes that need grading
     const quizzesWithResults = await prisma.quiz.findMany({
       where: {
         userId,
@@ -125,7 +125,64 @@ export async function GET(req: Request) {
   }
 }
 
-// DELETE - Hapus quiz
+// POST - Create new quiz
+export async function POST(req: Request) {
+  try {
+    const { userId } = auth();
+
+    if (!userId) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const body = await req.json();
+    const validatedData = quizSchema.parse(body);
+
+    // Create quiz with questions
+    const quiz = await prisma.quiz.create({
+      data: {
+        title: validatedData.title,
+        description: validatedData.description,
+        kelas: validatedData.kelas,
+        duration: validatedData.duration,
+        deadline: validatedData.deadline,
+        isRandomized: validatedData.isRandomized,
+        showScore: validatedData.showScore,
+        userId,
+        courseId: validatedData.courseId,
+        questions: {
+          create: validatedData.questions.map(q => ({
+            text: q.text,
+            type: q.type,
+            options: JSON.stringify(q.options),
+            correctAnswer: q.correctAnswer,
+            points: q.points
+          }))
+        }
+      },
+      include: {
+        questions: true
+      }
+    });
+
+    return NextResponse.json(quiz);
+  } catch (error) {
+    console.error('[QUIZ_POST]', error);
+    
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify({ 
+        error: 'Validation error',
+        details: error.errors 
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    return new NextResponse('Internal Error', { status: 500 });
+  }
+}
+
+// DELETE - Delete quiz
 export async function DELETE(
   req: Request,
   { params }: { params: { quizId: string } }
@@ -137,11 +194,11 @@ export async function DELETE(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Hapus quiz (otomatis hapus pertanyaan karena onDelete: Cascade)
+    // Delete quiz (questions will be deleted automatically due to onDelete: Cascade)
     await prisma.quiz.delete({
       where: {
         id: params.quizId,
-        userId // Hanya pemilik yang bisa hapus
+        userId // Only owner can delete
       }
     });
 

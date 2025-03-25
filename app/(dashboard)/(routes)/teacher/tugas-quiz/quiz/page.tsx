@@ -160,7 +160,7 @@ export default function QuizPage() {
         </div>
         <Button 
           className="gap-2"
-          onClick={() => router.push('/quiz/new')}
+          onClick={() => router.push('/teacher/tugas-quiz/quiz/create')}
         >
           <Plus className="w-4 h-4" />
           Buat Quiz Baru
@@ -332,14 +332,14 @@ export default function QuizPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem 
                             className="gap-2"
-                            onClick={() => router.push(`/quiz/${quiz.id}/edit`)}
+                            onClick={() => router.push(`/quiz/${quiz.id}/feature/edit`)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             className="gap-2"
-                            onClick={() => router.push(`/quiz/${quiz.id}/results`)}
+                            onClick={() => router.push(`/quiz/${quiz.id}/feature/results`)}
                           >
                             <BarChart className="w-4 h-4" />
                             Lihat Hasil
