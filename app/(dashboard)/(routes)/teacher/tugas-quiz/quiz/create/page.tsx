@@ -22,16 +22,47 @@ import {
   Save, 
   X, 
   ChevronDown, 
-  ChevronUp
+  ChevronUp,
+  Share2,
+  Copy,
+  Check,
+  X as XIcon
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'react-hot-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+
+type Question = {
+  text: string;
+  type: 'multiple_choice' | 'true_false' | 'short_answer';
+  options: string[];
+  correctAnswer: number;
+  points: number;
+  correctShortAnswer?: string;
+};
+
+type QuizData = {
+  title: string;
+  description: string;
+  kelas: string;
+  duration: number;
+  deadline: string;
+  isRandomized: boolean;
+  showScore: boolean;
+  questions: Question[];
+};
 
 export default function CreateQuizPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [quizData, setQuizData] = useState({
+  const [quizData, setQuizData] = useState<QuizData>({
     title: '',
     description: '',
     kelas: '',
@@ -43,29 +74,66 @@ export default function CreateQuizPage() {
   });
 
   const [activeTab, setActiveTab] = useState('details');
-  const [newQuestion, setNewQuestion] = useState({
+  const [newQuestion, setNewQuestion] = useState<Question>({
     text: '',
     type: 'multiple_choice',
     options: ['', '', ''],
     correctAnswer: 0,
-    points: 1
+    points: 1,
+    correctShortAnswer: ''
   });
 
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [quizLink, setQuizLink] = useState('');
+
   const addQuestion = () => {
-    if (newQuestion.text.trim() && newQuestion.options.every(opt => opt.trim())) {
+    let isValid = true;
+    
+    if (!newQuestion.text.trim()) {
+      toast.error('Harap isi pertanyaan');
+      isValid = false;
+    }
+
+    if (newQuestion.type === 'multiple_choice') {
+      if (newQuestion.options.some(opt => !opt.trim())) {
+        toast.error('Harap isi semua opsi jawaban untuk pilihan ganda');
+        isValid = false;
+      }
+    } else if (newQuestion.type === 'short_answer') {
+      if (!newQuestion.correctShortAnswer?.trim()) {
+        toast.error('Harap isi jawaban singkat yang benar');
+        isValid = false;
+      }
+    }
+
+    if (isValid) {
+      const questionToAdd: Question = newQuestion.type === 'true_false' 
+        ? {
+            ...newQuestion,
+            options: ['Benar', 'Salah'],
+            correctAnswer: newQuestion.correctAnswer
+          }
+        : newQuestion.type === 'short_answer'
+        ? {
+            ...newQuestion,
+            options: [newQuestion.correctShortAnswer || ''],
+            correctAnswer: 0
+          }
+        : newQuestion;
+
       setQuizData({
         ...quizData,
-        questions: [...quizData.questions, newQuestion]
+        questions: [...quizData.questions, questionToAdd]
       });
+
       setNewQuestion({
         text: '',
         type: 'multiple_choice',
         options: ['', '', ''],
         correctAnswer: 0,
-        points: 1
+        points: 1,
+        correctShortAnswer: ''
       });
-    } else {
-      toast.error('Harap isi pertanyaan dan semua opsi jawaban');
     }
   };
 
@@ -118,6 +186,21 @@ export default function CreateQuizPage() {
     setQuizData({...quizData, questions: updatedQuestions});
   };
 
+  const handleQuestionTypeChange = (type: 'multiple_choice' | 'true_false' | 'short_answer') => {
+    setNewQuestion({
+      ...newQuestion,
+      type,
+      options: type === 'multiple_choice' ? ['', '', ''] : type === 'true_false' ? ['Benar', 'Salah'] : [],
+      correctAnswer: 0,
+      correctShortAnswer: type === 'short_answer' ? newQuestion.correctShortAnswer : ''
+    });
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(quizLink);
+    toast.success('Link berhasil disalin!');
+  };
+
   const handleSaveQuiz = async () => {
     if (!quizData.title || !quizData.kelas || !quizData.deadline || quizData.questions.length === 0) {
       toast.error('Harap lengkapi semua field yang diperlukan');
@@ -136,8 +219,11 @@ export default function CreateQuizPage() {
           ...quizData,
           deadline: new Date(quizData.deadline).toISOString(),
           questions: quizData.questions.map(q => ({
-            ...q,
-            options: q.options.filter(opt => opt.trim() !== '')
+            text: q.text,
+            type: q.type,
+            options: q.type === 'short_answer' ? [q.correctShortAnswer || q.options[0] || ''] : q.options.filter(opt => opt.trim() !== ''),
+            correctAnswer: q.correctAnswer,
+            points: q.points
           }))
         }),
       });
@@ -149,7 +235,10 @@ export default function CreateQuizPage() {
 
       const data = await response.json();
       toast.success('Quiz berhasil disimpan!');
-      router.push(`/quiz/${data.id}`);
+      
+      const link = `${window.location.origin}/quiz/${data.id}`;
+      setQuizLink(link);
+      setShowShareDialog(true);
     } catch (error: any) {
       console.error('Error saving quiz:', error);
       toast.error(error.message || 'Terjadi kesalahan saat menyimpan quiz');
@@ -195,7 +284,6 @@ export default function CreateQuizPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Section */}
         <div className="lg:col-span-2 bg-white rounded-lg border shadow-sm p-6">
           <div className="flex border-b mb-6">
             <button
@@ -306,7 +394,6 @@ export default function CreateQuizPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Existing Questions */}
               {quizData.questions.map((question, qIndex) => (
                 <div key={qIndex} className="border rounded-lg p-4 relative">
                   <div className="absolute top-2 right-2 flex gap-1">
@@ -333,47 +420,102 @@ export default function CreateQuizPage() {
                   </div>
 
                   <div className="mb-4">
-                    <Label>Pertanyaan {qIndex + 1}</Label>
+                    <div className="flex justify-between items-start">
+                      <Label>Pertanyaan {qIndex + 1}</Label>
+                      <Badge variant="outline" className="ml-2">
+                        {question.type === 'multiple_choice' ? 'Pilihan Ganda' : 
+                         question.type === 'true_false' ? 'Benar/Salah' : 'Jawaban Singkat'}
+                      </Badge>
+                    </div>
                     <p className="font-medium mt-1">{question.text}</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Pilihan Jawaban:</Label>
-                    {question.options.map((option, optIndex) => (
-                      <div key={optIndex} className="flex items-center gap-2">
+                  {question.type === 'multiple_choice' && (
+                    <div className="space-y-2">
+                      <Label>Pilihan Jawaban:</Label>
+                      {question.options.map((option, optIndex) => (
+                        <div key={optIndex} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name={`correct-${qIndex}`}
+                            checked={question.correctAnswer === optIndex}
+                            onChange={() => handleCorrectAnswerChange(qIndex, optIndex)}
+                            className="h-4 w-4 text-blue-600"
+                          />
+                          <Input
+                            value={option}
+                            onChange={(e) => handleOptionChange(qIndex, optIndex, e.target.value)}
+                            className={`flex-1 ${question.correctAnswer === optIndex ? 'border-blue-500 bg-blue-50' : ''}`}
+                            placeholder={`Opsi ${optIndex + 1}`}
+                          />
+                          {question.options.length > 1 && (
+                            <button 
+                              onClick={() => removeOption(qIndex, optIndex)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2 mt-2"
+                        onClick={() => addOption(qIndex)}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Tambah Pilihan
+                      </Button>
+                    </div>
+                  )}
+
+                  {question.type === 'true_false' && (
+                    <div className="space-y-2">
+                      <Label>Pilihan Jawaban:</Label>
+                      <div className="flex items-center gap-2">
                         <input
                           type="radio"
                           name={`correct-${qIndex}`}
-                          checked={question.correctAnswer === optIndex}
-                          onChange={() => handleCorrectAnswerChange(qIndex, optIndex)}
+                          checked={question.correctAnswer === 0}
+                          onChange={() => handleCorrectAnswerChange(qIndex, 0)}
                           className="h-4 w-4 text-blue-600"
                         />
-                        <Input
-                          value={option}
-                          onChange={(e) => handleOptionChange(qIndex, optIndex, e.target.value)}
-                          className={`flex-1 ${question.correctAnswer === optIndex ? 'border-blue-500 bg-blue-50' : ''}`}
-                          placeholder={`Opsi ${optIndex + 1}`}
-                        />
-                        {question.options.length > 1 && (
-                          <button 
-                            onClick={() => removeOption(qIndex, optIndex)}
-                            className="text-red-500 hover:text-red-700 p-1"
-                          >
-                            <Trash className="w-4 h-4" />
-                          </button>
-                        )}
+                        <div className={`flex-1 p-2 rounded ${question.correctAnswer === 0 ? 'bg-green-50 text-green-700 font-medium' : 'bg-gray-50'}`}>
+                          <Check className="inline w-4 h-4 mr-2" />
+                          Benar
+                        </div>
                       </div>
-                    ))}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="gap-2 mt-2"
-                      onClick={() => addOption(qIndex)}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Tambah Pilihan
-                    </Button>
-                  </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name={`correct-${qIndex}`}
+                          checked={question.correctAnswer === 1}
+                          onChange={() => handleCorrectAnswerChange(qIndex, 1)}
+                          className="h-4 w-4 text-blue-600"
+                        />
+                        <div className={`flex-1 p-2 rounded ${question.correctAnswer === 1 ? 'bg-green-50 text-green-700 font-medium' : 'bg-gray-50'}`}>
+                          <XIcon className="inline w-4 h-4 mr-2" />
+                          Salah
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {question.type === 'short_answer' && (
+                    <div className="space-y-2">
+                      <Label>Jawaban yang Benar:</Label>
+                      <Input
+                        value={question.options[0] || ''}
+                        onChange={(e) => {
+                          const updatedQuestions = [...quizData.questions];
+                          updatedQuestions[qIndex].options = [e.target.value];
+                          setQuizData({...quizData, questions: updatedQuestions});
+                        }}
+                        placeholder="Masukkan jawaban yang benar"
+                      />
+                    </div>
+                  )}
 
                   <div className="mt-4">
                     <Label>Poin:</Label>
@@ -392,7 +534,6 @@ export default function CreateQuizPage() {
                 </div>
               ))}
 
-              {/* Add New Question */}
               <div className="border-2 border-dashed rounded-lg p-6">
                 <h3 className="font-medium mb-4">Tambah Pertanyaan Baru</h3>
                 
@@ -411,7 +552,7 @@ export default function CreateQuizPage() {
                   <Label>Tipe Pertanyaan</Label>
                   <Select
                     value={newQuestion.type}
-                    onValueChange={(value) => setNewQuestion({...newQuestion, type: value})}
+                    onValueChange={(value: 'multiple_choice' | 'true_false' | 'short_answer') => handleQuestionTypeChange(value)}
                   >
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Pilih tipe" />
@@ -478,6 +619,53 @@ export default function CreateQuizPage() {
                   </div>
                 )}
 
+                {newQuestion.type === 'true_false' && (
+                  <div className="space-y-2 mb-4">
+                    <Label>Pilihan Jawaban</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="correct-new-tf"
+                        checked={newQuestion.correctAnswer === 0}
+                        onChange={() => setNewQuestion({...newQuestion, correctAnswer: 0})}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      <div className={`flex-1 p-2 rounded ${newQuestion.correctAnswer === 0 ? 'bg-green-50 text-green-700 font-medium' : 'bg-gray-50'}`}>
+                        <Check className="inline w-4 h-4 mr-2" />
+                        Benar
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="correct-new-tf"
+                        checked={newQuestion.correctAnswer === 1}
+                        onChange={() => setNewQuestion({...newQuestion, correctAnswer: 1})}
+                        className="h-4 w-4 text-blue-600"
+                      />
+                      <div className={`flex-1 p-2 rounded ${newQuestion.correctAnswer === 1 ? 'bg-green-50 text-green-700 font-medium' : 'bg-gray-50'}`}>
+                        <XIcon className="inline w-4 h-4 mr-2" />
+                        Salah
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {newQuestion.type === 'short_answer' && (
+                  <div className="space-y-2 mb-4">
+                    <Label>Jawaban Singkat yang Benar</Label>
+                    <Input
+                      value={newQuestion.correctShortAnswer || ''}
+                      onChange={(e) => setNewQuestion({
+                        ...newQuestion, 
+                        correctShortAnswer: e.target.value
+                      })}
+                      placeholder="Masukkan jawaban yang benar"
+                    />
+                    <p className="text-xs text-gray-500">Peserta harus mengetik jawaban yang tepat untuk mendapatkan poin</p>
+                  </div>
+                )}
+
                 <div className="mb-4">
                   <Label>Poin</Label>
                   <Input
@@ -495,7 +683,11 @@ export default function CreateQuizPage() {
                 <Button 
                   className="w-full gap-2"
                   onClick={addQuestion}
-                  disabled={!newQuestion.text.trim() || (newQuestion.type === 'multiple_choice' && newQuestion.options.some(opt => !opt.trim()))}
+                  disabled={
+                    !newQuestion.text.trim() || 
+                    (newQuestion.type === 'multiple_choice' && newQuestion.options.some(opt => !opt.trim())) ||
+                    (newQuestion.type === 'short_answer' && !newQuestion.correctShortAnswer?.trim())
+                  }
                 >
                   <Plus className="w-4 h-4" />
                   Tambahkan Pertanyaan
@@ -505,7 +697,6 @@ export default function CreateQuizPage() {
           )}
         </div>
 
-        {/* Preview Section */}
         <div className="bg-white rounded-lg border shadow-sm p-6">
           <h2 className="text-xl font-bold mb-4">Pratinjau Quiz</h2>
           
@@ -561,7 +752,14 @@ export default function CreateQuizPage() {
                 <div className="space-y-4">
                   {quizData.questions.map((question, index) => (
                     <div key={index} className="border rounded p-3">
-                      <p className="font-medium">{index + 1}. {question.text}</p>
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium">{index + 1}. {question.text}</p>
+                        <Badge variant="outline" className="ml-2">
+                          {question.type === 'multiple_choice' ? 'Pilihan Ganda' : 
+                           question.type === 'true_false' ? 'Benar/Salah' : 'Jawaban Singkat'}
+                        </Badge>
+                      </div>
+                      
                       {question.type === 'multiple_choice' && (
                         <ul className="mt-2 space-y-1">
                           {question.options.map((option, optIndex) => (
@@ -577,6 +775,32 @@ export default function CreateQuizPage() {
                           ))}
                         </ul>
                       )}
+
+                      {question.type === 'true_false' && (
+                        <div className="mt-2 space-y-1">
+                          <div className={`text-sm p-1 rounded ${question.correctAnswer === 0 ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-600'}`}>
+                            A. Benar
+                            {question.correctAnswer === 0 && (
+                              <span className="ml-1 text-green-600">✓</span>
+                            )}
+                          </div>
+                          <div className={`text-sm p-1 rounded ${question.correctAnswer === 1 ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-600'}`}>
+                            B. Salah
+                            {question.correctAnswer === 1 && (
+                              <span className="ml-1 text-green-600">✓</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {question.type === 'short_answer' && (
+                        <div className="mt-2">
+                          <div className="text-sm font-medium text-green-700 bg-green-50 p-1 rounded">
+                            Jawaban: {question.options[0]}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="mt-2 text-xs text-gray-500">
                         Poin: {question.points}
                       </div>
@@ -590,6 +814,57 @@ export default function CreateQuizPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="w-5 h-5" />
+              Bagikan Quiz
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Quiz Anda telah berhasil dibuat! Bagikan link berikut dengan peserta didik:
+            </p>
+            
+            <div className="flex items-center gap-2">
+              <Input
+                value={quizLink}
+                readOnly
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                onClick={copyToClipboard}
+                className="gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Salin
+              </Button>
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowShareDialog(false)}
+              >
+                Tutup
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowShareDialog(false);
+                  router.push(quizLink.replace(window.location.origin, ''));
+                }}
+                className="gap-2"
+              >
+                <BookOpen className="w-4 h-4" />
+                Lihat Quiz
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
