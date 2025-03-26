@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,11 @@ import {
   Share2,
   Copy,
   Check,
-  X as XIcon
+  X as XIcon,
+  Upload,
+  FileText,
+  File,
+  FileInput
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +41,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { parse } from 'papaparse';
+import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
 
+// Initialize PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 type Question = {
   text: string;
@@ -61,7 +70,9 @@ type QuizData = {
 
 export default function CreateQuizPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [quizData, setQuizData] = useState<QuizData>({
     title: '',
     description: '',
@@ -247,6 +258,165 @@ export default function CreateQuizPage() {
     }
   };
 
+  // File import handlers
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const fileType = file.type;
+      const fileName = file.name.toLowerCase();
+
+      let textContent = '';
+
+      if (fileType === 'text/plain' || fileName.endsWith('.txt')) {
+        textContent = await readTextFile(file);
+      } else if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
+        textContent = await readPdfFile(file);
+      } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+                 fileName.endsWith('.docx')) {
+        textContent = await readDocxFile(file);
+      } else {
+        toast.error('Format file tidak didukung. Gunakan TXT, DOCX, atau PDF.');
+        return;
+      }
+
+      const questions = parseQuestionsFromText(textContent);
+      if (questions.length > 0) {
+        setQuizData(prev => ({
+          ...prev,
+          questions: [...prev.questions, ...questions]
+        }));
+        toast.success(`Berhasil mengimpor ${questions.length} pertanyaan`);
+      } else {
+        toast.error('Tidak ditemukan pertanyaan dalam file');
+      }
+    } catch (error) {
+      console.error('Error importing file:', error);
+      toast.error('Gagal mengimpor pertanyaan dari file');
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // File readers
+  const readTextFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = (e) => reject(reader.error);
+      reader.readAsText(file);
+    });
+  };
+
+  const readPdfFile = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    let textContent = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContentObj = await page.getTextContent();
+      const pageText = textContentObj.items.map(item => (item as any).str).join(' ');
+      textContent += pageText + '\n';
+    }
+
+    return textContent;
+  };
+
+  const readDocxFile = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  };
+
+  // Text parsing to questions
+  const parseQuestionsFromText = (text: string): Question[] => {
+    const questions: Question[] = [];
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+
+    let currentQuestion: Partial<Question> = {};
+    let currentOptions: string[] = [];
+    let correctAnswerIndex = -1;
+
+    for (const line of lines) {
+      // Detect question (starts with number or Q)
+      if (/^\d+[.)]/.test(line) || /^Q\d*[:.)]/.test(line)) {
+        // Save previous question if exists
+        if (currentQuestion.text && currentOptions.length > 0) {
+          questions.push({
+            text: currentQuestion.text,
+            type: 'multiple_choice',
+            options: currentOptions,
+            correctAnswer: correctAnswerIndex >= 0 ? correctAnswerIndex : 0,
+            points: 1
+          });
+        }
+
+        // Start new question
+        currentQuestion = {
+          text: line.replace(/^\d+[.)]\s*/, '').replace(/^Q\d*[:.)]\s*/, '').trim()
+        };
+        currentOptions = [];
+        correctAnswerIndex = -1;
+      } 
+      // Detect options (starts with a letter or *)
+      else if (/^[A-Za-z][.)]/.test(line) || /^\*[A-Za-z][.)]/.test(line)) {
+        const isCorrect = line.startsWith('*');
+        const optionText = line.replace(/^\*?[A-Za-z][.)]\s*/, '').trim();
+        
+        if (isCorrect) {
+          correctAnswerIndex = currentOptions.length;
+        }
+        currentOptions.push(optionText);
+      }
+      // Detect true/false question
+      else if (/benar|salah|true|false/i.test(line)) {
+        currentQuestion = {
+          text: line.trim(),
+          type: 'true_false',
+          options: ['Benar', 'Salah'],
+          correctAnswer: /benar|true/i.test(line) ? 0 : 1,
+          points: 1
+        };
+        questions.push(currentQuestion as Question);
+        currentQuestion = {};
+        currentOptions = [];
+      }
+      // Detect short answer (ends with ?)
+      else if (line.trim().endsWith('?')) {
+        currentQuestion = {
+          text: line.trim(),
+          type: 'short_answer',
+          options: [''], // Will be replaced with correct answer
+          correctAnswer: 0,
+          points: 1,
+          correctShortAnswer: '' // User needs to fill this
+        };
+        questions.push(currentQuestion as Question);
+        currentQuestion = {};
+        currentOptions = [];
+      }
+    }
+
+    // Add last question if exists
+    if (currentQuestion.text && currentOptions.length > 0) {
+      questions.push({
+        text: currentQuestion.text,
+        type: 'multiple_choice',
+        options: currentOptions,
+        correctAnswer: correctAnswerIndex >= 0 ? correctAnswerIndex : 0,
+        points: 1
+      });
+    }
+
+    return questions;
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
@@ -394,6 +564,52 @@ export default function CreateQuizPage() {
             </div>
           ) : (
             <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="font-medium">Pertanyaan ({quizData.questions.length})</h3>
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileImport}
+                    accept=".txt,.pdf,.docx"
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isImporting}
+                    className="gap-2"
+                  >
+                    {isImporting ? (
+                      'Mengimpor...'
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Impor Pertanyaan
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                <p className="font-medium mb-1">Format file yang didukung:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>
+                    <span className="font-medium">TXT:</span> Pertanyaan diawali angka/Q) dan opsi diawali huruf (A), jawaban benar diawali *
+                    <pre className="bg-gray-100 p-2 mt-1 rounded text-xs">
+                      1) Pertanyaan contoh?<br />
+                      *A) Jawaban benar<br />
+                      B) Jawaban salah<br />
+                      C) Jawaban lain
+                    </pre>
+                  </li>
+                  <li>
+                    <span className="font-medium">DOCX/PDF:</span> Format sama dengan TXT atau pertanyaan per baris
+                  </li>
+                </ul>
+              </div>
+
               {quizData.questions.map((question, qIndex) => (
                 <div key={qIndex} className="border rounded-lg p-4 relative">
                   <div className="absolute top-2 right-2 flex gap-1">

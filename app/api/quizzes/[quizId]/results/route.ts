@@ -1,49 +1,54 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 
-// GET - Ambil hasil quiz
 export async function GET(
-  req: Request,
+  request: Request,
   { params }: { params: { quizId: string } }
 ) {
   try {
-    const { userId } = auth();
+    // Handle auth properly
+    const { userId } = await auth();
 
     if (!userId) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Cek apakah user adalah pembuat quiz atau peserta
+    // Get quizId from params safely
+    const quizId = params?.quizId;
+
+    if (!quizId) {
+      return new NextResponse('Quiz ID is required', { status: 400 });
+    }
+
+    // Verify quiz exists
     const quiz = await prisma.quiz.findUnique({
-      where: { id: params.quizId },
-      select: { userId: true }
+      where: { id: quizId },
+      select: { 
+        title: true,
+        showScore: true,
+        userId: true
+      }
     });
 
     if (!quiz) {
       return new NextResponse('Quiz not found', { status: 404 });
     }
 
-    const isCreator = quiz.userId === userId;
-
-    // Untuk creator: dapatkan semua hasil
-    // Untuk peserta: dapatkan hasil mereka saja
+    // Get all quiz results with proper user handling
     const results = await prisma.quizResult.findMany({
       where: {
-        quizId: params.quizId,
-        ...(!isCreator ? { userId } : {}) // Filter untuk non-creator
+        quizId: quizId,
+        // Ensure user exists by checking the relation
+        user: {
+          id: { not: undefined } // This properly checks for existing users
+        }
       },
       include: {
         user: {
           select: {
             id: true,
             email: true
-          }
-        },
-        quiz: {
-          select: {
-            title: true,
-            showScore: true
           }
         }
       },
@@ -52,16 +57,24 @@ export async function GET(
       }
     });
 
-    // Parse answers dari string JSON ke array
+    // Process results safely
     const parsedResults = results.map(result => ({
-      ...result,
-      answers: JSON.parse(result.answers as string)
+      id: result.id,
+      user: result.user,
+      score: result.score,
+      answers: typeof result.answers === 'string' 
+        ? JSON.parse(result.answers) 
+        : result.answers,
+      submittedAt: result.submittedAt
     }));
 
     return NextResponse.json({
-      isCreator,
+      quizTitle: quiz.title,
+      showScore: quiz.showScore,
+      isCreator: quiz.userId === userId,
       results: parsedResults
     });
+
   } catch (error) {
     console.error('[QUIZ_RESULTS_GET]', error);
     return new NextResponse('Internal Error', { status: 500 });
