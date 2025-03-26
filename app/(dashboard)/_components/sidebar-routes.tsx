@@ -67,7 +67,7 @@ const teacherRoutes = [
   {
     icon: BookText,
     label: "Tugas & Quiz",
-    href: "/teacher/tugas-ujian"
+    href: "/teacher/tugas-quiz"
   },
   {
     icon: Calendar,
