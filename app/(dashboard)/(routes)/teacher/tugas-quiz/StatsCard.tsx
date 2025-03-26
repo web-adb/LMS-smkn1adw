@@ -7,6 +7,7 @@ interface StatsCardProps {
   color: string;
 }
 
+
 export const StatsCard = ({ icon, title, value, color }: StatsCardProps) => {
   const bgColor = `bg-${color}-50`;
   const textColor = `text-${color}-600`;
