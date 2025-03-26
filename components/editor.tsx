@@ -43,6 +43,7 @@ export const Editor = forwardRef<any, EditorProps>(
     const quillRef = useRef<any>(null);
 
     // Ekspos metode getEditor dan getSelectedText melalui ref
+    
     useImperativeHandle(ref, () => ({
       getEditor: () => {
         if (quillRef.current) {
@@ -69,12 +70,12 @@ export const Editor = forwardRef<any, EditorProps>(
           value={value}
           onChange={onChange}
           modules={modules}
-        //   ref={(el: any) => {
-        //     if (el) {
-        //       quillRef.current = el; // Simpan instance Quill ke ref
-        //     }
-        //   }
-        // }
+          ref={(el: any) => {
+            if (el) {
+              quillRef.current = el; // Simpan instance Quill ke ref
+            }
+          }
+        }
         />
       </div>
     );
