@@ -52,6 +52,7 @@ model Chapter {
   title        String
   description  String?        @db.Text
   videoUrl     String?        @db.Text
+  youtubeUrl   String?        @db.Text // Tambahkan ini
   position     Int
   isPublished  Boolean        @default(false)
   isFree       Boolean        @default(false)
@@ -104,4 +105,53 @@ model StripeCustomer {
   stripeCustomerId String   @unique
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  content   String
+  author    String
+  createdAt DateTime @default(now())
+}
+
+model Tugas {
+  id          String   @id @default(cuid())
+  judul       String
+  deskripsi   String
+  deadline    DateTime
+  lampiran    String?
+  selesai     Boolean  @default(false)
+  dikumpulkan Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id        String   @id @default(uuid())
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  level     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Certificate {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  imageUrl    String
+  date        DateTime
+  userId      String   // Siswa yang menerima sertifikat
+  teacherId   String   // Guru yang mengupload sertifikat
+  user        User     @relation(fields: [userId], references: [id], name: "StudentCertificate") // Relasi ke siswa
+  teacher     User     @relation(fields: [teacherId], references: [id], name: "TeacherCertificate") // Relasi ke guru
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  certificates Certificate[] @relation("StudentCertificate") // Relasi ke sertifikat yang diterima
+  taughtCertificates Certificate[] @relation("TeacherCertificate") // Relasi ke sertifikat yang diupload
 }

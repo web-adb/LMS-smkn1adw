@@ -8,14 +8,16 @@ import { Separator } from "@/components/ui/separator";
 import { Preview } from "@/components/preview";
 import { File } from "lucide-react";
 import { CourseProgressButton } from "./_components/course-progress-button";
+import { Suspense } from "react";
 
-const ChapterIdPage = async ({
-    params
-}: {
-    params: {courseId: string, chapterId: string}
-}) => {
+const ChapterIdPage = async (
+    props: {
+        params: Promise<{courseId: string, chapterId: string}>
+    }
+) => {
+    const params = await props.params;
     const { userId } = auth();
-    
+
     if (!userId) {
         return redirect("/");
     }
@@ -59,6 +61,7 @@ const ChapterIdPage = async ({
                         playbackId={muxData?.playbackId!}
                         completeOnEnd={completeOnEnd}
                         isLocked={isLocked}
+                        youtubeUrl="" // Pass an empty string or a default value
                     />
                 </div>
                 <div>
@@ -104,5 +107,36 @@ const ChapterIdPage = async ({
         </div>
     );
 };
- 
-export default ChapterIdPage;
+
+const SkeletonLoading = () => {
+    return (
+        <div className="flex flex-col max-w-4xl mx-auto pb-20">
+            <div className="p-4">
+                <div className="animate-pulse bg-gray-300 h-64 w-full rounded-md"></div>
+            </div>
+            <div>
+                <div className="p-4 flex flex-col md:flex-row items-center justify-between">
+                    {/* <div className="animate-pulse bg-gray-300 h-8 w-1/2 rounded-md"></div> */}
+                    <div className="animate-pulse bg-gray-300 h-10 w-24 rounded-md"></div>
+                </div>
+                <Separator />
+                <div className="p-4">
+                    <div className="animate-pulse bg-gray-300 h-44 w-full rounded-md mb-2"></div>
+                    <div className="animate-pulse bg-gray-300 h-4 w-3/4 rounded-md"></div>
+                </div>
+                <Separator />
+                <div className="p-4">
+                    <div className="animate-pulse bg-gray-300 h-10 w-full rounded-md"></div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default function ChapterIdPageWithSuspense(props: { params: Promise<{courseId: string, chapterId: string}> }) {
+    return (
+        <Suspense fallback={<SkeletonLoading />}>
+            <ChapterIdPage params={props.params} />
+        </Suspense>
+    );
+};
