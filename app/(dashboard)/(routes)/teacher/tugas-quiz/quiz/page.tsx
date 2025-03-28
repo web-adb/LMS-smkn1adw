@@ -1,73 +1,28 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Filter, FileUp, MoreVertical, Clock, Calendar, BookOpen, BarChart, Edit, Trash } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Search, Plus, Filter, FileUp, BookOpen } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { toast } from 'react-hot-toast';
-
-type Quiz = {
-  id: string;
-  title: string;
-  description: string;
-  kelas: string;
-  duration: number;
-  deadline: string;
-  isRandomized: boolean;
-  showScore: boolean;
-  courseId?: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  _count: {
-    results: number;
-  };
-  questions: {
-    id: string;
-    text: string;
-    type: string;
-    options: string[];
-    correctAnswer: number;
-    points: number;
-    quizId: string;
-    createdAt: string;
-    updatedAt: string;
-  }[];
-  course?: {
-    title: string;
-    id: string;
-  };
-};
-
-type QuizStats = {
-  totalQuizzes: number;
-  activeQuizzes: number;
-  quizzesNeedGrading: number;
-  averageScore: number;
-};
+import { toast } from "react-hot-toast";
+import { Quiz, QuizStats } from "./types";
+import { QuizStatsCards } from "./QuizStatsCards";
+import { QuizTable } from "./QuizTable";
+import { DeleteQuizModal } from "./DeleteQuizModal";
+import { prepareQuizExportData, exportToCSV } from "./exportUtils";
 
 export default function QuizPage() {
   const router = useRouter();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [stats, setStats] = useState<QuizStats>({
     totalQuizzes: 0,
@@ -75,15 +30,17 @@ export default function QuizPage() {
     quizzesNeedGrading: 0,
     averageScore: 0,
   });
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch quizzes data with stats
   const fetchQuizzes = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/quizzes?withStats=true');
-      
+      const response = await fetch("/api/quizzes?withStats=true");
+
       if (!response.ok) {
-        throw new Error('Gagal memuat data quiz');
+        throw new Error("Gagal memuat data quiz");
       }
 
       const data = await response.json();
@@ -95,10 +52,21 @@ export default function QuizPage() {
         averageScore: data.averageScore,
       });
     } catch (error) {
-      toast.error('Gagal memuat data quiz');
+      toast.error("Gagal memuat data quiz");
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      const exportData = prepareQuizExportData(quizzes);
+      exportToCSV(exportData, `data-quiz-${new Date().toISOString().slice(0,10)}.csv`);
+      toast.success("Data berhasil diexport");
+    } catch (error) {
+      toast.error("Gagal mengexport data");
+      console.error(error);
     }
   };
 
@@ -106,65 +74,86 @@ export default function QuizPage() {
     fetchQuizzes();
   }, []);
 
-  // Handle quiz deletion
-  const handleDeleteQuiz = async (quizId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus quiz ini?')) return;
+  const openDeleteModal = (quiz: Quiz) => {
+    setQuizToDelete(quiz);
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setQuizToDelete(null);
+  };
+
+  const handleDeleteQuiz = async () => {
+    if (!quizToDelete) return;
 
     try {
-      const response = await fetch(`/api/quizzes/${quizId}`, {
-        method: 'DELETE',
+      setIsDeleting(true);
+      const response = await fetch(`/api/quizzes/${quizToDelete.id}`, {
+        method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error('Gagal menghapus quiz');
+        throw new Error("Gagal menghapus quiz");
       }
 
-      await fetchQuizzes(); // Refresh data after deletion
-      toast.success('Quiz berhasil dihapus');
+      await fetchQuizzes();
+      toast.success("Quiz berhasil dihapus");
+      closeDeleteModal();
     } catch (error) {
-      toast.error('Gagal menghapus quiz');
+      toast.error("Gagal menghapus quiz");
       console.error(error);
+    } finally {
+      setIsDeleting(false);
     }
-  };
-
-  // Filter quizzes based on search and status
-  const filteredQuizzes = quizzes.filter(quiz => {
-    const matchesSearch = quiz.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         quiz.kelas.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (quiz.course?.title.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesStatus = !filterStatus || 
-                         (filterStatus === 'active' && new Date(quiz.deadline) > new Date()) ||
-                         (filterStatus === 'ended' && new Date(quiz.deadline) <= new Date());
-    return matchesSearch && matchesStatus;
-  });
-
-  // Get quiz status
-  const getQuizStatus = (deadline: string) => {
-    return new Date(deadline) > new Date() ? 'active' : 'ended';
-  };
-
-  // Calculate participants (assuming each result is one participant)
-  const getParticipantsCount = (quiz: Quiz) => {
-    return quiz._count?.results || 0;
   };
 
   return (
     <div className="container mx-auto py-8">
+      <DeleteQuizModal
+        isOpen={deleteModalOpen}
+        quiz={quizToDelete}
+        isDeleting={isDeleting}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteQuiz}
+      />
+
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Manajemen Quiz</h1>
-          <p className="text-gray-600 mt-2">
-            Kelola quiz, ujian, dan evaluasi pembelajaran
-          </p>
+      <div className="mb-8">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-6 shadow-lg">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-white/10 backdrop-blur-sm">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                  Pusat Evaluasi Pembelajaran
+                </h1>
+                <p className="text-blue-100 mt-1 text-sm md:text-base">
+                  Kelola dan pantau seluruh aktivitas penilaian siswa
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-center items-center gap-4 w-full">
+            <Button 
+                variant="outline"
+                className="gap-2 bg-white/10 text-white hover:bg-white/20 border-white"
+                onClick={handleExport}
+              >
+                <FileUp className="w-4 h-4" />
+                <span>Export Data</span>
+              </Button>
+              <Button
+                className="gap-2 bg-white text-indigo-700 hover:bg-white/90 hover:text-indigo-800 shadow-md transition-all"
+                onClick={() => router.push("/teacher/tugas-quiz/quiz/create")}
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Quiz</span>
+              </Button>
+            </div>
+          </div>
         </div>
-        <Button 
-          className="gap-2"
-          onClick={() => router.push('/teacher/tugas-quiz/quiz/create')}
-        >
-          <Plus className="w-4 h-4" />
-          Buat Quiz Baru
-        </Button>
       </div>
 
       {/* Filter and Search Section */}
@@ -172,7 +161,7 @@ export default function QuizPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
-            placeholder="Cari quiz (judul, kelas, atau mata pelajaran)..."
+            placeholder="Cari quiz (ID, judul, kelas, atau mata pelajaran)..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -190,177 +179,26 @@ export default function QuizPage() {
               <DropdownMenuItem onClick={() => setFilterStatus(null)}>
                 Semua
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterStatus('active')}>
+              <DropdownMenuItem onClick={() => setFilterStatus("active")}>
                 Aktif
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterStatus('ended')}>
+              <DropdownMenuItem onClick={() => setFilterStatus("ended")}>
                 Selesai
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" className="gap-2">
-            <FileUp className="w-4 h-4" />
-            Export
-          </Button>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Quiz</p>
-              <p className="text-2xl font-bold">{stats.totalQuizzes}</p>
-            </div>
-            <div className="p-3 rounded-full bg-blue-50 text-blue-600">
-              <BookOpen className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Aktif</p>
-              <p className="text-2xl font-bold">{stats.activeQuizzes}</p>
-            </div>
-            <div className="p-3 rounded-full bg-green-50 text-green-600">
-              <Clock className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Perlu Dinilai</p>
-              <p className="text-2xl font-bold">{stats.quizzesNeedGrading}</p>
-            </div>
-            <div className="p-3 rounded-full bg-amber-50 text-amber-600">
-              <FileUp className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Rata-rata Nilai</p>
-              <p className="text-2xl font-bold">{stats.averageScore.toFixed(1)}</p>
-            </div>
-            <div className="p-3 rounded-full bg-purple-50 text-purple-600">
-              <BarChart className="w-5 h-5" />
-            </div>
-          </div>
-        </div>
-      </div>
+      <QuizStatsCards stats={stats} />
 
-      {/* Quiz Table */}
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead className="w-[120px]">ID Quiz</TableHead>
-              <TableHead>Judul Quiz</TableHead>
-              <TableHead>Kelas</TableHead>
-              <TableHead>Mata Pelajaran</TableHead>
-              <TableHead>Deadline</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Peserta</TableHead>
-              <TableHead className="text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  Memuat data quiz...
-                </TableCell>
-              </TableRow>
-            ) : filteredQuizzes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  {searchTerm || filterStatus ? 'Tidak ada quiz yang sesuai dengan filter' : 'Belum ada quiz'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredQuizzes.map((quiz) => {
-                const status = getQuizStatus(quiz.deadline);
-                const participants = getParticipantsCount(quiz);
-                
-                return (
-                  <TableRow key={quiz.id}>
-                    <TableCell className="font-medium">{quiz.id.slice(0, 6)}...</TableCell>
-                    <TableCell className="font-medium">{quiz.title}</TableCell>
-                    <TableCell>{quiz.kelas}</TableCell>
-                    <TableCell>
-                      {quiz.course?.title || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-500" />
-                        {new Date(quiz.deadline).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          status === "active" 
-                            ? "default" 
-                            : "outline"
-                        }
-                      >
-                        {status === "active" ? "Aktif" : "Selesai"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{participants}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem 
-                            className="gap-2"
-                            onClick={() => router.push(`/quiz/${quiz.id}/feature/edit`)}
-                          >
-                            <Edit className="w-4 h-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="gap-2"
-                            onClick={() => router.push(`/quiz/${quiz.id}/feature/results`)}
-                          >
-                            <BarChart className="w-4 h-4" />
-                            Lihat Hasil
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="gap-2 text-red-600"
-                            onClick={() => handleDeleteQuiz(quiz.id)}
-                          >
-                            <Trash className="w-4 h-4" />
-                            Hapus
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <QuizTable
+        quizzes={quizzes}
+        loading={loading}
+        searchTerm={searchTerm}
+        filterStatus={filterStatus}
+        onDeleteClick={openDeleteModal}
+      />
     </div>
   );
 }

@@ -2,12 +2,15 @@
 
 import { UserButton, useAuth, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
-import { LogOut, Edit, Settings} from "lucide-react";
+import { LogOut, Edit, Settings, Search, Bell} from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { isTeacher } from "@/lib/isTeacher";
 import { SearchInput } from "./search-input";
 import { useState } from "react";
+import { SpotlightSearch } from "./search";
+import { SettingsDropdown } from "./settings-dropdown";
+
 
 export const NavbarRoutes = () => {
   const { userId } = useAuth();
@@ -39,7 +42,7 @@ export const NavbarRoutes = () => {
                   className="flex items-center gap-x-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="hidden sm:inline">Exit Teacher Mode</span>
+                  <span className="hidden sm:inline">Kembali</span>
                 </Button>
               </Link>
             ) : (
@@ -47,7 +50,7 @@ export const NavbarRoutes = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="flex items-center gap-x-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  className="flex items-center gap-x-2 rounded-full bg-yellow-300 dark:bg-gray-800 hover:bg-yellow-500 dark:hover:bg-gray-700"
                 >
                   <Edit className="h-4 w-4" />
                   <span className="hidden sm:inline">Teacher Mode</span>
@@ -59,14 +62,20 @@ export const NavbarRoutes = () => {
 
         {/* Settings Button */}
         <div className="hidden md:block">
-          <Link href="/pengaturan">
+        <SettingsDropdown />
+        </div>
+        <div className="hidden md:block">
+        <SpotlightSearch />
+        </div>
+
+        <div className="hidden md:block">
+          <Link href="#">
             <Button
               size="sm"
               variant="ghost"
               className="flex items-center gap-x-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
             >
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Settings</span>
+              <Bell className="h-4 w-4" />
             </Button>
           </Link>
         </div>
@@ -75,7 +84,7 @@ export const NavbarRoutes = () => {
         <div className="flex items-center">
           <div className="flex items-center gap-x-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
             <span className="text-sm font-medium text-blue-600 dark:text-blue-200 hidden sm:inline">
-              {user?.fullName || user?.firstName || user?.username || "User"}
+              {user?.fullName || user?.firstName || user?.username || "Anda Belum Login"}
             </span>
             <div className="h-8 w-8 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/50">
               <UserButton 
