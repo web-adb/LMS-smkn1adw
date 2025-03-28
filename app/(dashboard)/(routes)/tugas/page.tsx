@@ -1,24 +1,26 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { ClipboardList, CalendarDays, Clock, FileText, CheckCircle, MoreVertical, Upload } from 'lucide-react';
-import { formatDate, formatTime } from '@/app/utils/dateUtils'; // Sesuaikan path
+import { formatDate, formatTime } from '@/app/utils/dateUtils';
+import { FileUpload } from './FileUpload';
+import toast from 'react-hot-toast';
 
-// Definisikan tipe untuk data tugas
 interface Tugas {
   id: string;
   judul: string;
   deskripsi: string;
   deadline: string;
-  waktu: string;
   lampiran: string;
   selesai: boolean;
   dikumpulkan: boolean;
+  filePengumpulan?: string;
 }
 
 const DaftarTugasPage: React.FC = () => {
   const [tugas, setTugas] = useState<Tugas[]>([]);
+  const [selectedTugas, setSelectedTugas] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Ambil data tugas dari API
   useEffect(() => {
     const fetchTugas = async () => {
       try {
@@ -33,7 +35,6 @@ const DaftarTugasPage: React.FC = () => {
     fetchTugas();
   }, []);
 
-  // Fungsi untuk menandai tugas sebagai selesai/belum selesai
   const handleTandaiSelesai = async (id: string, selesai: boolean) => {
     try {
       const response = await fetch(`/api/tugas`, {
@@ -41,84 +42,78 @@ const DaftarTugasPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id, selesai: !selesai, dikumpulkan: false }),
+        body: JSON.stringify({ id, selesai: !selesai }),
       });
 
       if (response.ok) {
-        const updatedTugas = tugas.map((t) =>
-          t.id === id ? { ...t, selesai: !selesai } : t
-        );
-        setTugas(updatedTugas);
+        setTugas(tugas.map(t => t.id === id ? { ...t, selesai: !selesai } : t));
       }
     } catch (error) {
       console.error('Gagal mengupdate status tugas:', error);
     }
   };
 
-  // Fungsi untuk mengumpulkan tugas
-  const handleKumpulkanTugas = async (id: string) => {
+  const handleFileUpload = (id: string, url?: string) => {
+    setIsUploading(false);
+    if (url) {
+      handleKumpulkanTugas(id, url);
+    }
+  };
+
+  const handleKumpulkanTugas = async (id: string, fileUrl?: string) => {
     try {
       const response = await fetch(`/api/tugas`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id, dikumpulkan: true }),
+        body: JSON.stringify({ 
+          id, 
+          dikumpulkan: true,
+          filePengumpulan: fileUrl 
+        }),
       });
 
       if (response.ok) {
-        const updatedTugas = tugas.map((t) =>
-          t.id === id ? { ...t, dikumpulkan: true } : t
-        );
-        setTugas(updatedTugas);
-        alert('Tugas berhasil dikumpulkan!');
+        setTugas(tugas.map(t => 
+          t.id === id ? { ...t, dikumpulkan: true, filePengumpulan: fileUrl } : t
+        ));
+        toast.success('Tugas berhasil dikumpulkan!');
       }
     } catch (error) {
       console.error('Gagal mengumpulkan tugas:', error);
+      toast.error('Gagal mengumpulkan tugas');
     }
   };
 
-  // Fungsi untuk menentukan warna badge berdasarkan deadline
   const getDeadlineBadgeColor = (deadline: string) => {
     const today = new Date();
     const deadlineDate = new Date(deadline);
     const timeDiff = deadlineDate.getTime() - today.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-    if (daysDiff < 0) {
-      return 'bg-red-100 text-red-800'; // Deadline sudah lewat
-    } else if (daysDiff <= 2) {
-      return 'bg-yellow-100 text-yellow-800'; // Deadline mendekati
-    } else {
-      return 'bg-green-100 text-green-800'; // Deadline masih lama
-    }
+    if (daysDiff < 0) return 'bg-red-100 text-red-800';
+    if (daysDiff <= 2) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Daftar Tugas</h1>
         <p className="text-sm text-gray-500">Lihat dan kelola tugas Anda di sini.</p>
       </div>
 
-      {/* Daftar Tugas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tugas.map((tugas: Tugas) => (
-          <div
-            key={tugas.id}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-          >
-            {/* Judul Tugas */}
+        {tugas.map((tugas) => (
+          <div key={tugas.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-800">{tugas.judul}</h2>
               <MoreVertical className="h-5 w-5 text-gray-500 cursor-pointer" />
             </div>
 
-            {/* Deskripsi Tugas */}
             <p className="text-sm text-gray-600 mb-4">{tugas.deskripsi}</p>
 
-            {/* Deadline dan Waktu */}
             <div className="flex items-center space-x-4 mb-4">
               <div className={`flex items-center text-sm px-3 py-1 rounded-full ${getDeadlineBadgeColor(tugas.deadline)}`}>
                 <CalendarDays className="h-4 w-4 mr-2" />
@@ -130,13 +125,15 @@ const DaftarTugasPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Lampiran */}
-            <div className="flex items-center text-sm text-gray-500 mb-4">
-              <FileText className="h-4 w-4 mr-2" />
-              <span>{tugas.lampiran}</span>
-            </div>
+            {tugas.lampiran && (
+              <div className="flex items-center text-sm text-gray-500 mb-4">
+                <FileText className="h-4 w-4 mr-2" />
+                <a href={tugas.lampiran} target="_blank" rel="noopener" className="text-blue-500 hover:underline">
+                  Lihat Lampiran
+                </a>
+              </div>
+            )}
 
-            {/* Status Tugas */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 {tugas.selesai ? (
@@ -156,19 +153,40 @@ const DaftarTugasPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Tombol Kumpulkan Tugas */}
             {!tugas.dikumpulkan ? (
-              <button
-                onClick={() => handleKumpulkanTugas(tugas.id)}
-                className="w-full flex items-center justify-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                <Upload className="h-4 w-4" />
-                <span>Kumpulkan Tugas</span>
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setSelectedTugas(selectedTugas === tugas.id ? null : tugas.id)}
+                  className="w-full flex items-center justify-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Kumpulkan Tugas</span>
+                </button>
+
+                {selectedTugas === tugas.id && (
+                  <div className="p-3 border border-gray-200 rounded-lg">
+                    <FileUpload
+                      endpoint="courseAttachment"
+                      onChange={(url) => handleFileUpload(tugas.id, url)}
+                      onUploadStart={() => setIsUploading(true)}
+                    />
+                    {isUploading && (
+                      <p className="text-sm text-gray-500 mt-2">Mengunggah file...</p>
+                    )}
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="w-full flex items-center justify-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
-                <CheckCircle className="h-4 w-4" />
-                <span>Terkumpul</span>
+              <div className="space-y-2">
+                <div className="w-full flex items-center justify-center space-x-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Terkumpul</span>
+                </div>
+                {tugas.filePengumpulan && (
+                  <div className="text-sm text-gray-600 mt-2">
+                    File: <a href={tugas.filePengumpulan} target="_blank" rel="noopener" className="text-blue-500 hover:underline">Lihat Pengumpulan</a>
+                  </div>
+                )}
               </div>
             )}
           </div>

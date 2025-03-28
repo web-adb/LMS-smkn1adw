@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Compass, Layout, List, Eye, UserRoundCheck, Award, Settings, HelpCircle, MessageSquare, Calendar, Trophy, Clock, ChevronDown, ChevronUp, BookText, ScrollText } from "lucide-react";
+import { BarChart, Compass, Layout, List, Eye, UserRoundCheck, Award, Settings, HelpCircle, MessageSquare, Calendar, Trophy, Clock, ChevronDown, ChevronUp, BookText, ScrollText,Pencil } from "lucide-react";
 import { SidebarItem } from "./sidebar-item";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -20,6 +20,11 @@ const guestRoutes = [
     icon: List,
     label: "Tugas Saya",
     href: "/tugas",
+  },
+  {
+    icon: Pencil,
+    label: "Quiz",
+    href: "/quiz",
   },
   {
     icon: Calendar,
