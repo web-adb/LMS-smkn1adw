@@ -13,15 +13,17 @@ import {
   Download,
   MessageSquare,
   User,
-  CalendarDays
+  CalendarDays,
+  Loader2
 } from 'lucide-react';
 import { formatDate, formatTime } from '@/app/utils/dateUtils';
+import { useUser } from '@clerk/nextjs';
 
 interface Tugas {
   id: string;
   judul: string;
   deskripsi: string;
-  deadline: Date;
+  deadline: Date | string;
   lampiran: string | null;
 }
 
@@ -30,10 +32,12 @@ interface Pengumpulan {
   tugasId: string;
   userId: string;
   user: {
+    id: string;
     email: string;
   };
-  filePengumpulan: string;
-  dikumpulkanPada: Date;
+  filePengumpulan: string | null;
+  textPengumpulan: string | null;
+  dikumpulkanPada: Date | string | null;
   nilai: number | null;
   feedback: string | null;
   selesai: boolean;
@@ -48,6 +52,8 @@ const PenilaianTugasPage = () => {
   const [filterStatus, setFilterStatus] = useState<string>('semua');
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
+  const { user } = useUser();
 
   // Fetch all assignments
   useEffect(() => {
@@ -87,7 +93,10 @@ const PenilaianTugasPage = () => {
 
   // Handle grading submission
   const handleNilai = async (pengumpulanId: string, nilai: number, feedback: string) => {
+    if (!user) return;
+    
     try {
+      setIsGrading(true);
       const response = await fetch('/api/tugas/grade', {
         method: 'POST',
         headers: {
@@ -97,15 +106,13 @@ const PenilaianTugasPage = () => {
           id: pengumpulanId,
           nilai,
           feedback,
-          selesai: true,
-          dikumpulkan: true
         }),
       });
 
       if (response.ok) {
         const updatedList = pengumpulanList.map(item => 
           item.id === pengumpulanId 
-            ? { ...item, nilai, feedback, selesai: true, dikumpulkan: true } 
+            ? { ...item, nilai, feedback, selesai: true } 
             : item
         );
         setPengumpulanList(updatedList);
@@ -113,6 +120,8 @@ const PenilaianTugasPage = () => {
       }
     } catch (error) {
       console.error('Gagal menyimpan nilai:', error);
+    } finally {
+      setIsGrading(false);
     }
   };
 
@@ -126,6 +135,18 @@ const PenilaianTugasPage = () => {
       (filterStatus === 'belum' && !p.dikumpulkan);
     return matchesSearch && matchesStatus;
   });
+
+  // Safe date formatting
+  const safeFormatDate = (date: Date | string | null | undefined) => {
+    if (!date) return '-';
+    return formatDate(date.toString());
+  };
+
+  // Safe time formatting
+  const safeFormatTime = (date: Date | string | null | undefined) => {
+    if (!date) return '';
+    return formatTime(date.toString());
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -182,7 +203,7 @@ const PenilaianTugasPage = () => {
                   <p className="text-sm text-gray-500 truncate">{tugas.deskripsi}</p>
                   <div className="flex items-center mt-1 text-xs text-gray-500">
                     <CalendarDays className="mr-1 h-3 w-3" />
-                    <span>Deadline: {formatDate(tugas.deadline.toString())}</span>
+                    <span>Deadline: {safeFormatDate(tugas.deadline)}</span>
                   </div>
                 </div>
               ))}
@@ -200,6 +221,19 @@ const PenilaianTugasPage = () => {
                   <p className="text-gray-600 mb-4">
                     {tugasList.find(t => t.id === selectedTugas)?.deskripsi}
                   </p>
+                  {tugasList.find(t => t.id === selectedTugas)?.lampiran && (
+                    <div className="flex items-center text-sm text-gray-500 mb-2">
+                      <FileText className="mr-2 h-4 w-4" />
+                      <a 
+                        href={tugasList.find(t => t.id === selectedTugas)?.lampiran || '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        Lihat File Tugas
+                      </a>
+                    </div>
+                  )}
                   <div className="flex items-center text-sm text-gray-500">
                     <FileText className="mr-2 h-4 w-4" />
                     <span>
@@ -210,6 +244,7 @@ const PenilaianTugasPage = () => {
 
                 {isLoading ? (
                   <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-500" />
                     <p>Memuat data pengumpulan...</p>
                   </div>
                 ) : (
@@ -232,7 +267,7 @@ const PenilaianTugasPage = () => {
                               <p className="font-medium">{pengumpulan.user.email}</p>
                               {pengumpulan.dikumpulkanPada && (
                                 <p className="text-xs text-gray-500">
-                                  Dikumpulkan: {formatDate(pengumpulan.dikumpulkanPada.toString())} {formatTime(pengumpulan.dikumpulanPada.toString())}
+                                  Dikumpulkan: {safeFormatDate(pengumpulan.dikumpulkanPada)} {safeFormatTime(pengumpulan.dikumpulkanPada)}
                                 </p>
                               )}
                             </div>
@@ -268,13 +303,14 @@ const PenilaianTugasPage = () => {
                           </div>
 
                           <div className="col-span-3 flex items-center space-x-2">
-                            {pengumpulan.filePengumpulan && (
+                            {(pengumpulan.filePengumpulan || pengumpulan.textPengumpulan) && (
                               <a
-                                href={pengumpulan.filePengumpulan}
+                                href={pengumpulan.filePengumpulan || `data:text/plain;charset=utf-8,${encodeURIComponent(pengumpulan.textPengumpulan || '')}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                title="Download"
+                                title={pengumpulan.filePengumpulan ? "Download File" : "Lihat Teks"}
+                                download={!!pengumpulan.filePengumpulan}
                               >
                                 <Download className="h-4 w-4" />
                               </a>
@@ -284,6 +320,7 @@ const PenilaianTugasPage = () => {
                               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
                               onClick={() => setExpandedFeedback(expandedFeedback === pengumpulan.id ? null : pengumpulan.id)}
                               title="Feedback"
+                              disabled={!pengumpulan.dikumpulkan}
                             >
                               <MessageSquare className="h-4 w-4" />
                             </button>
@@ -321,14 +358,20 @@ const PenilaianTugasPage = () => {
                                   }}
                                 />
                                 <button
-                                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+                                  className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center"
                                   onClick={() => {
                                     if (pengumpulan.nilai !== null) {
                                       handleNilai(pengumpulan.id, pengumpulan.nilai, pengumpulan.feedback || '');
                                     }
                                   }}
+                                  disabled={isGrading}
                                 >
-                                  Simpan
+                                  {isGrading ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      Menyimpan...
+                                    </>
+                                  ) : 'Simpan'}
                                 </button>
                               </div>
                             )}

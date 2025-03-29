@@ -1,0 +1,291 @@
+'use client';
+import { CalendarDays, Clock, FileText, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { useEffect, useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Pengumpulan {
+  id: string;
+  dikumpulkanPada: string;
+  nilai: number | null;
+}
+
+interface Tugas {
+  id: string;
+  judul: string;
+  deskripsi: string;
+  deadline: string;
+  lampiran: string;
+  pengumpulan?: Pengumpulan;
+}
+
+export const TugasList = ({ 
+  title = "Tugas Terbaru", 
+  maxItems = 4 
+}: {
+  title?: string;
+  maxItems?: number;
+}) => {
+  const [tugas, setTugas] = useState<Tugas[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  useEffect(() => {
+    const fetchTugas = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await fetch('/api/tugas');
+        if (!response.ok) throw new Error('Gagal mengambil data');
+        const data = await response.json();
+        setTugas(data);
+      } catch (err) {
+        console.error('Error:', err);
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTugas();
+  }, []);
+
+  // Hitung statistik tugas
+  const statistik = {
+    total: tugas.length,
+    selesai: tugas.filter(t => t.pengumpulan).length,
+    belumDikumpulkan: tugas.filter(t => !t.pengumpulan).length,
+    deadlineMendekati: tugas.filter(t => {
+      const deadline = new Date(t.deadline);
+      const now = new Date();
+      const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 3600 * 24));
+      return diffDays <= 3 && diffDays >= 0 && !t.pengumpulan;
+    }).length
+  };
+
+  const tugasToShow = tugas.slice(0, maxItems);
+
+  if (error) {
+    return (
+      <div className="rounded-lg bg-red-50 p-4 border border-red-200 mb-6">
+        <div className="flex items-center gap-2 text-red-800">
+          <AlertCircle className="h-5 w-5" />
+          <h3 className="font-medium">Gagal memuat tugas</h3>
+        </div>
+        <p className="mt-2 text-sm text-red-700">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-3 text-sm text-red-800 hover:underline"
+        >
+          Coba lagi
+        </button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 mb-8">
+        <Skeleton className="h-8 w-1/3 rounded-md" />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-lg" />
+          ))}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-36 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (tugasToShow.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 p-6 text-center rounded-lg border border-dashed bg-gray-50 mb-8">
+        <FileText className="w-10 h-10 text-muted-foreground" />
+        <h3 className="text-lg font-medium">Tidak ada tugas saat ini</h3>
+        <p className="text-sm text-muted-foreground">
+          Semua tugas yang diberikan akan muncul di sini
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-8">
+      {/* Header dengan dropdown */}
+      <div 
+        className={`border-2 rounded-xl overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-white border-blue-200' : 'bg-blue-50 border-blue-100'}`}
+      >
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`w-full flex items-center justify-between p-5 transition-colors ${isExpanded ? 'hover:bg-blue-50' : 'hover:bg-blue-100'}`}
+        >
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+            <span className="text-sm px-3 py-1 rounded-full bg-blue-600 text-white font-medium">
+              {tugas.length} Tugas
+            </span>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-blue-600" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-blue-600" />
+          )}
+        </button>
+
+        {isExpanded && (
+          <div className="p-6 pt-0 space-y-6">
+            {/* Statistik Tugas */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard 
+                title="Total Tugas" 
+                value={statistik.total} 
+                icon={<FileText className="h-6 w-6 text-blue-600" />}
+                color="bg-blue-50"
+                borderColor="border-blue-200"
+              />
+              <StatCard 
+                title="Terkumpul" 
+                value={statistik.selesai} 
+                icon={<CheckCircle className="h-6 w-6 text-green-600" />}
+                color="bg-green-50"
+                borderColor="border-green-200"
+              />
+              <StatCard 
+                title="Belum Dikumpulkan" 
+                value={statistik.belumDikumpulkan} 
+                icon={<AlertCircle className="h-6 w-6 text-yellow-600" />}
+                color="bg-yellow-50"
+                borderColor="border-yellow-200"
+              />
+              <StatCard 
+                title="Deadline Dekat" 
+                value={statistik.deadlineMendekati} 
+                icon={<Clock className="h-6 w-6 text-orange-600" />}
+                color="bg-orange-50"
+                borderColor="border-orange-200"
+              />
+            </div>
+
+            {/* Daftar Tugas */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {tugasToShow.map((tugas) => (
+                <Link 
+                  key={tugas.id} 
+                  href={`/tugas/${tugas.id}`}
+                  className="group block transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className={`p-6 border-2 rounded-xl transition-all group-hover:shadow-lg ${tugas.pengumpulan ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-white'}`}>
+                    <div className="flex justify-between items-start gap-3">
+                      <h3 className="font-bold text-lg line-clamp-2 text-gray-800">{tugas.judul}</h3>
+                      {tugas.pengumpulan ? (
+                        <span className="flex-shrink-0 flex items-center text-sm bg-green-600 text-white px-3 py-1 rounded-full font-medium">
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Terkumpul
+                        </span>
+                      ) : (
+                        <span className={`flex-shrink-0 text-sm px-3 py-1 rounded-full font-medium ${getDeadlineStatus(tugas.deadline).class}`}>
+                          {getDeadlineStatus(tugas.deadline).text}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-sm text-gray-600 mt-3 line-clamp-2">
+                      {tugas.deskripsi}
+                    </p>
+
+                    <div className="mt-4 flex items-center justify-between text-sm">
+                      <div className="flex items-center text-gray-500">
+                        <CalendarDays className="h-4 w-4 mr-2" />
+                        <span className="font-medium">
+                          {formatDistanceToNow(new Date(tugas.deadline), {
+                            addSuffix: true,
+                            locale: id
+                          })}
+                        </span>
+                      </div>
+
+                      {tugas.lampiran && (
+                        <div className="flex items-center text-blue-600 font-medium">
+                          <FileText className="h-4 w-4 mr-2" />
+                          <span>Lampiran</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {tugas.length > maxItems && (
+              <div className="pt-2 flex justify-end">
+                <Link 
+                  href="/tugas" 
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 transition-colors"
+                >
+                  Lihat semua tugas
+                  <ChevronDown className="h-4 w-4" />
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Komponen StatCard yang diperbarui
+const StatCard = ({ title, value, icon, color, borderColor }: { 
+  title: string; 
+  value: number; 
+  icon: React.ReactNode;
+  color: string;
+  borderColor: string;
+}) => (
+  <div className={`rounded-xl border-2 ${borderColor} ${color} p-5 shadow-sm`}>
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+      <div className="rounded-lg bg-white p-2 shadow-sm">
+        {icon}
+      </div>
+    </div>
+    <p className="text-3xl font-bold mt-3 text-gray-800">{value}</p>
+  </div>
+);
+
+function getDeadlineStatus(deadline: string) {
+  const today = new Date();
+  const deadlineDate = new Date(deadline);
+  const timeDiff = deadlineDate.getTime() - today.getTime();
+  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+  if (daysDiff < 0) {
+    return {
+      text: 'Terlambat',
+      class: 'bg-red-600 text-white'
+    };
+  }
+  if (daysDiff === 0) {
+    return {
+      text: 'Deadline hari ini',
+      class: 'bg-orange-600 text-white'
+    };
+  }
+  if (daysDiff <= 3) {
+    return {
+      text: `${daysDiff} hari lagi`,
+      class: 'bg-yellow-600 text-white'
+    };
+  }
+  return {
+    text: 'Aktif',
+    class: 'bg-blue-600 text-white'
+  };
+}

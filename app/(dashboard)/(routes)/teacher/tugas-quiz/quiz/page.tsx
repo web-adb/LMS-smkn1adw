@@ -108,6 +108,39 @@ export default function QuizPage() {
     }
   };
 
+  const handleDeleteMultipleQuizzes = async (quizIds: string[]) => {
+    if (!quizIds || quizIds.length === 0) return;
+
+    try {
+      setIsDeleting(true);
+      
+      // Delete quizzes one by one since bulk delete isn't implemented in your API
+      const deletePromises = quizIds.map(id => 
+        fetch(`/api/quizzes/${id}`, { method: "DELETE" })
+      );
+      
+      const results = await Promise.allSettled(deletePromises);
+      
+      // Check if any deletions failed
+      const failedDeletes = results.filter(
+        result => result.status === "rejected" || 
+        (result.status === "fulfilled" && !result.value.ok)
+      );
+      
+      if (failedDeletes.length > 0) {
+        throw new Error(`${failedDeletes.length} quiz gagal dihapus`);
+      }
+
+      await fetchQuizzes();
+      toast.success(`${quizIds.length} quiz berhasil dihapus`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal menghapus quiz");
+      console.error(error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };  
+
   return (
     <div className="container mx-auto py-8">
       <DeleteQuizModal
@@ -198,6 +231,7 @@ export default function QuizPage() {
         searchTerm={searchTerm}
         filterStatus={filterStatus}
         onDeleteClick={openDeleteModal}
+        onDeleteMultiple={handleDeleteMultipleQuizzes}
       />
     </div>
   );

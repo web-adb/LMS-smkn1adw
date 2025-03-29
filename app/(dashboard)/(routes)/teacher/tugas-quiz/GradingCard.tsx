@@ -4,7 +4,7 @@ import { FileCheck, Clock, ArrowRight } from "lucide-react";
 export const GradingCard = () => {
   return (
     <Link
-      href="/penilaian"
+      href="/teacher/tugas-quiz/penilaian"
       className="group transition-all duration-300 hover:-translate-y-1"
       aria-label="Navigasi ke tugas perlu dinilai"
     >

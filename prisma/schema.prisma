@@ -125,6 +125,22 @@ model Tugas {
   dikumpulkan Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  pengumpulan PengumpulanTugas[]
+}
+
+model PengumpulanTugas {
+  id              String   @id @default(cuid())
+  tugasId         String
+  tugas           Tugas    @relation(fields: [tugasId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  filePengumpulan String?
+    textPengumpulan String?
+  dikumpulkanPada DateTime @default(now())
+  nilai           Int?
+  feedback        String?
+  selesai         Boolean  @default(false)
+  dikumpulkan     Boolean  @default(true)
 }
 
 model Event {
@@ -214,5 +230,6 @@ model User {
   taughtCertificates Certificate[] @relation("TeacherCertificate")
   createdQuizzes Quiz[]      @relation("QuizCreator")
   quizResults  QuizResult[]  @relation("QuizParticipant")
+pengumpulanTugas PengumpulanTugas[]
 }
 

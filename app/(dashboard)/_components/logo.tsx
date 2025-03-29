@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Netra from "../../../public/Netra2.jpg";
+import Netra from "../../../public/Netra2.png";
 
 export const Logo = () => {
     return (
