@@ -4,6 +4,9 @@ export interface User {
     lastName: string;
     email: string;
     profileImageUrl: string;
+    status: 'active' | 'inactive';
+    courses?: string[];
+    weeklyStudyTime?: number;
   }
   
   export interface StatsData {
@@ -11,4 +14,13 @@ export interface User {
     activeStudents: number;
     coursesTaken: number;
     averageTime: string;
+  }
+
+  export interface AiAnalysis {
+    summary: string;
+    recommendations: string[];
+    studentNeedingAttention: {
+      id: string;
+      reason: string;
+    } | null;
   }

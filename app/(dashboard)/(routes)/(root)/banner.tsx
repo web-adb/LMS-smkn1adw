@@ -20,6 +20,10 @@ export const WelcomeBanner = () => {
     condition: "Misterius",
     icon: <Zap className="h-5 w-5 text-yellow-400 animate-pulse" />
   });
+  const [ipAddress, setIpAddress] = useState<string>("Loading...");
+  const [location, setLocation] = useState<string>("Loading location...");
+  const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "prompt">("prompt");
+  const [coordinates, setCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
 
   // Update time every second
   useEffect(() => {
@@ -40,6 +44,77 @@ export const WelcomeBanner = () => {
       return () => clearTimeout(timer);
     }
   }, [clickCount]);
+
+  // Request geolocation permission
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCoordinates({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setLocationPermission("granted");
+          fetchLocationFromCoords(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          setLocationPermission("denied");
+          fetchIpBasedLocation();
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported by this browser.");
+      fetchIpBasedLocation();
+    }
+  }, []);
+
+  // Fetch location from coordinates
+  const fetchLocationFromCoords = async (lat: number, lon: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+      );
+      const data = await response.json();
+      
+      if (data.address) {
+        const city = data.address.city || data.address.town || data.address.village || data.address.county;
+        const country = data.address.country;
+        setLocation(`${city ? city + ', ' : ''}${country}`);
+        setWeather(prev => ({
+          ...prev,
+          city: city || "Lokasi Anda"
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching location from coordinates:", error);
+      fetchIpBasedLocation();
+    }
+  };
+
+  // Fallback to IP-based location
+  const fetchIpBasedLocation = async () => {
+    try {
+      const ipResponse = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipResponse.json();
+      setIpAddress(ipData.ip);
+
+      const locationResponse = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
+      const locationData = await locationResponse.json();
+      
+      if (locationData.city && locationData.country_name) {
+        setLocation(`${locationData.city}, ${locationData.country_name}`);
+        setWeather(prev => ({
+          ...prev,
+          city: locationData.city
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching IP data:", error);
+      setIpAddress("Not available");
+      setLocation("Location unknown");
+    }
+  };
 
   // Get time-based gradient colors
   const getTimeBasedGradient = () => {
@@ -146,6 +221,25 @@ export const WelcomeBanner = () => {
     setClickCount(prev => prev + 1);
   };
 
+  const handleRequestLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCoordinates({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setLocationPermission("granted");
+          fetchLocationFromCoords(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          setLocationPermission("denied");
+        }
+      );
+    }
+  };
+
   return (
     <div 
       className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${timeGradient.from} ${timeGradient.to} dark:${timeGradient.darkFrom} dark:${timeGradient.darkTo} p-6 text-white shadow-lg transition-colors duration-1000 cursor-pointer`}
@@ -213,6 +307,36 @@ export const WelcomeBanner = () => {
               <span className="text-sm bg-white/20 px-2 py-1 rounded-full">
                 {showEasterEgg ? easterEggWeather.condition : weather.condition}
               </span>
+            </div>
+          </div>
+
+          {/* IP Address Card */}
+          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm min-w-[180px]">
+            <div className="text-sm font-medium opacity-80">IP & Lokasi</div>
+            <div className="flex flex-col mt-1">
+              <div className="text-xs font-mono truncate" title={ipAddress}>
+                {ipAddress}
+              </div>
+              {locationPermission === "denied" ? (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRequestLocation();
+                  }}
+                  className="text-sm font-medium text-white/80 hover:text-white underline"
+                >
+                  Izinkan akses lokasi
+                </button>
+              ) : (
+                <div className="text-sm font-medium truncate" title={location}>
+                  {location}
+                  {coordinates && (
+                    <span className="text-xs block opacity-70">
+                      {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

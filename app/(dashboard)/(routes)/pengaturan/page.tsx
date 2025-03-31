@@ -52,7 +52,7 @@ export default function PengaturanPage() {
     security: true,
     preferences: true,
   });
-
+  
   // Update username and email when user data changes
   useEffect(() => {
     if (user && isLoaded) {
