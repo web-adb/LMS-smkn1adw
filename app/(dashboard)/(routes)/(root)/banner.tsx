@@ -3,15 +3,15 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { Cloud, CloudRain, CloudSun, Sun, Droplet, Moon, Zap, Snowflake, CloudLightning } from "lucide-react";
+import { Cloud, CloudRain, CloudSun, Sun, Droplet, Moon, Zap, Snowflake, CloudLightning, Loader2 } from "lucide-react";
 
 export const WelcomeBanner = () => {
   const { user } = useUser();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [weather, setWeather] = useState({
-    temp: 28,
-    condition: "Cerah",
-    city: "Jakarta",
+    temp: 0,
+    condition: "Loading...",
+    city: "Loading...",
   });
   const [clickCount, setClickCount] = useState(0);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
@@ -24,6 +24,8 @@ export const WelcomeBanner = () => {
   const [location, setLocation] = useState<string>("Loading location...");
   const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "prompt">("prompt");
   const [coordinates, setCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [weatherLoading, setWeatherLoading] = useState(true);
 
   // Update time every second
   useEffect(() => {
@@ -45,29 +47,98 @@ export const WelcomeBanner = () => {
     }
   }, [clickCount]);
 
-  // Request geolocation permission
+  // Request geolocation permission and fetch weather
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCoordinates({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-          setLocationPermission("granted");
-          fetchLocationFromCoords(position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          setLocationPermission("denied");
-          fetchIpBasedLocation();
+    const fetchAllData = async () => {
+      try {
+        // First try to get precise location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              setCoordinates({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              });
+              setLocationPermission("granted");
+              await fetchLocationFromCoords(position.coords.latitude, position.coords.longitude);
+              await fetchWeather(position.coords.latitude, position.coords.longitude);
+            },
+            async (error) => {
+              console.error("Geolocation error:", error);
+              setLocationPermission("denied");
+              await fetchIpBasedLocation();
+            }
+          );
+        } else {
+          console.log("Geolocation is not supported by this browser.");
+          await fetchIpBasedLocation();
         }
-      );
-    } else {
-      console.log("Geolocation is not supported by this browser.");
-      fetchIpBasedLocation();
-    }
+      } catch (error) {
+        console.error("Error in initial data fetch:", error);
+        setWeather({
+          temp: 0,
+          condition: "Error",
+          city: "Unknown"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAllData();
   }, []);
+
+  // Fetch weather data from OpenWeatherMap
+  const fetchWeather = async (lat: number, lon: number) => {
+    try {
+      setWeatherLoading(true);
+      // Replace with your actual OpenWeatherMap API key
+      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || 'your_api_key';
+      const response = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=id`
+      );
+      const data = await response.json();
+      
+      if (data.main && data.weather && data.weather[0]) {
+        setWeather({
+          temp: Math.round(data.main.temp),
+          condition: translateWeatherCondition(data.weather[0].main),
+          city: data.name || "Lokasi Anda"
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching weather:", error);
+      setWeather({
+        temp: 0,
+        condition: "Error",
+        city: "Unknown"
+      });
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  // Translate weather condition to Indonesian
+  const translateWeatherCondition = (condition: string) => {
+    const translations: Record<string, string> = {
+      'Clear': 'Cerah',
+      'Clouds': 'Berawan',
+      'Rain': 'Hujan',
+      'Drizzle': 'Gerimis',
+      'Thunderstorm': 'Badai Petir',
+      'Snow': 'Salju',
+      'Mist': 'Kabut',
+      'Smoke': 'Asap',
+      'Haze': 'Kabut Asap',
+      'Dust': 'Debu',
+      'Fog': 'Kabut',
+      'Sand': 'Pasir',
+      'Ash': 'Abu Vulkanik',
+      'Squall': 'Angin Kencang',
+      'Tornado': 'Tornado'
+    };
+    return translations[condition] || condition;
+  };
 
   // Fetch location from coordinates
   const fetchLocationFromCoords = async (lat: number, lon: number) => {
@@ -88,7 +159,7 @@ export const WelcomeBanner = () => {
       }
     } catch (error) {
       console.error("Error fetching location from coordinates:", error);
-      fetchIpBasedLocation();
+      await fetchIpBasedLocation();
     }
   };
 
@@ -108,11 +179,21 @@ export const WelcomeBanner = () => {
           ...prev,
           city: locationData.city
         }));
+        
+        // Fetch weather based on approximate IP location
+        if (locationData.latitude && locationData.longitude) {
+          await fetchWeather(locationData.latitude, locationData.longitude);
+        }
       }
     } catch (error) {
       console.error("Error fetching IP data:", error);
       setIpAddress("Not available");
       setLocation("Location unknown");
+      setWeather({
+        temp: 28,
+        condition: "Cerah",
+        city: "Jakarta"
+      });
     }
   };
 
@@ -203,15 +284,25 @@ export const WelcomeBanner = () => {
       );
     }
     
+    if (weatherLoading) {
+      return <Loader2 className="h-5 w-5 animate-spin" />;
+    }
+    
     switch (condition.toLowerCase()) {
       case "hujan":
+      case "gerimis":
         return <CloudRain className="h-5 w-5 text-blue-200" />;
       case "cerah":
         return timeGradient.icon;
       case "berawan":
         return <CloudSun className="h-5 w-5 text-gray-200" />;
       case "lembab":
+      case "kabut":
         return <Droplet className="h-5 w-5 text-blue-300" />;
+      case "badai petir":
+        return <CloudLightning className="h-5 w-5 text-yellow-300" />;
+      case "salju":
+        return <Snowflake className="h-5 w-5 text-blue-100" />;
       default:
         return <Cloud className="h-5 w-5 text-gray-300" />;
     }
@@ -221,16 +312,18 @@ export const WelcomeBanner = () => {
     setClickCount(prev => prev + 1);
   };
 
-  const handleRequestLocation = () => {
+  const handleRequestLocation = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           setCoordinates({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude
           });
           setLocationPermission("granted");
-          fetchLocationFromCoords(position.coords.latitude, position.coords.longitude);
+          await fetchLocationFromCoords(position.coords.latitude, position.coords.longitude);
+          await fetchWeather(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.error("Geolocation error:", error);
@@ -240,9 +333,22 @@ export const WelcomeBanner = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="rounded-xl bg-gray-200 dark:bg-gray-800 p-6 animate-pulse">
+        <div className="h-8 w-3/4 bg-gray-300 dark:bg-gray-700 rounded mb-4"></div>
+        <div className="flex flex-wrap gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 bg-gray-300 dark:bg-gray-700 rounded-lg flex-1 min-w-[150px]"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
-      className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${timeGradient.from} ${timeGradient.to} dark:${timeGradient.darkFrom} dark:${timeGradient.darkTo} p-6 text-white shadow-lg transition-colors duration-1000 cursor-pointer`}
+      className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${timeGradient.from} ${timeGradient.to} dark:${timeGradient.darkFrom} dark:${timeGradient.darkTo} p-4 md:p-6 text-white shadow-lg transition-colors duration-1000 cursor-pointer`}
       onClick={handleBannerClick}
     >
       {/* Easter Egg Elements */}
@@ -264,71 +370,68 @@ export const WelcomeBanner = () => {
 
       <div className={`relative z-10 space-y-4 transition-opacity ${showEasterEgg ? 'opacity-0' : 'opacity-100'}`}>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">
+          <h1 className="text-xl md:text-3xl font-bold mb-1 md:mb-2">
             {currentTime.getHours() >= 5 && currentTime.getHours() < 12 ? "🌅" : 
              currentTime.getHours() >= 12 && currentTime.getHours() < 15 ? "☀️" :
              currentTime.getHours() >= 15 && currentTime.getHours() < 18 ? "🌇" : "🌙"} Selamat {getTimeOfDayGreeting(currentTime.getHours())},{" "}
             {user?.fullName || user?.firstName || user?.username || "User"}
           </h1>
-          <p className="text-lg md:text-xl opacity-90">
+          <p className="text-base md:text-xl opacity-90">
             {showEasterEgg ? "Anda menemukan cuaca rahasia! 🎉" : getTimeBasedMessage(currentTime.getHours())}
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
           {/* Date Card */}
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm min-w-[180px]">
-            <div className="text-sm font-medium opacity-80">Hari Ini</div>
-            <div className="text-lg font-semibold mt-1">
+          <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
+            <div className="text-xs md:text-sm font-medium opacity-80">Hari Ini</div>
+            <div className="text-base md:text-lg font-semibold mt-1">
               {formatDate(currentTime)}
             </div>
           </div>
 
           {/* Time Card */}
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm min-w-[180px]">
-            <div className="text-sm font-medium opacity-80">Jam Sekarang</div>
-            <div className="text-2xl font-bold mt-1">
+          <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
+            <div className="text-xs md:text-sm font-medium opacity-80">Jam Sekarang</div>
+            <div className="text-xl md:text-2xl font-bold mt-1">
               {formatTime(currentTime)}
             </div>
           </div>
 
           {/* Weather Card */}
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm min-w-[180px]">
-            <div className="text-sm font-medium opacity-80">
+          <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
+            <div className="text-xs md:text-sm font-medium opacity-80">
               Cuaca {showEasterEgg ? "Rahasia" : weather.city}
             </div>
             <div className="flex items-center justify-between mt-1">
               <div className="flex items-center gap-2">
                 {getWeatherIcon(showEasterEgg ? "misterius" : weather.condition)}
-                <span className="text-lg font-semibold">
-                  {showEasterEgg ? easterEggWeather.temp : weather.temp}°C
+                <span className="text-base md:text-lg font-semibold">
+                  {showEasterEgg ? easterEggWeather.temp : weatherLoading ? "--" : weather.temp}°C
                 </span>
               </div>
-              <span className="text-sm bg-white/20 px-2 py-1 rounded-full">
-                {showEasterEgg ? easterEggWeather.condition : weather.condition}
+              <span className="text-xs md:text-sm bg-white/20 px-2 py-1 rounded-full">
+                {showEasterEgg ? easterEggWeather.condition : weatherLoading ? "Loading..." : weather.condition}
               </span>
             </div>
           </div>
 
           {/* IP Address Card */}
-          <div className="bg-white/10 rounded-lg p-3 backdrop-blur-sm min-w-[180px]">
-            <div className="text-sm font-medium opacity-80">IP & Lokasi</div>
+          <div className="bg-white/10 rounded-lg p-2 md:p-3 backdrop-blur-sm">
+            <div className="text-xs md:text-sm font-medium opacity-80">IP & Lokasi</div>
             <div className="flex flex-col mt-1">
               <div className="text-xs font-mono truncate" title={ipAddress}>
                 {ipAddress}
               </div>
               {locationPermission === "denied" ? (
                 <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRequestLocation();
-                  }}
-                  className="text-sm font-medium text-white/80 hover:text-white underline"
+                  onClick={handleRequestLocation}
+                  className="text-xs md:text-sm font-medium text-white/80 hover:text-white underline text-left"
                 >
                   Izinkan akses lokasi
                 </button>
               ) : (
-                <div className="text-sm font-medium truncate" title={location}>
+                <div className="text-xs md:text-sm font-medium truncate" title={location}>
                   {location}
                   {coordinates && (
                     <span className="text-xs block opacity-70">

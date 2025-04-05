@@ -2,7 +2,7 @@
 
 import { UserButton, useAuth, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
-import { LogOut, Edit, Settings, Search, Bell} from "lucide-react";
+import { LogOut, Edit, Settings, Search, Bell } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { isTeacher } from "@/lib/isTeacher";
@@ -10,7 +10,6 @@ import { SearchInput } from "./search-input";
 import { useState } from "react";
 import { SpotlightSearch } from "./search";
 import { SettingsDropdown } from "./settings-dropdown";
-
 
 export const NavbarRoutes = () => {
   const { userId } = useAuth();
@@ -30,6 +29,23 @@ export const NavbarRoutes = () => {
         </div>
       )}
       <div className="flex gap-x-2 ml-auto items-center">
+        {/* Search Icon - Always Visible */}
+        <div className="md:hidden">
+          <SpotlightSearch />
+        </div>
+
+        {/* Notification Icon - Always Visible */}
+        <div className="md:hidden">
+          <Link href="#">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="flex items-center gap-x-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
 
         {/* Teacher Mode Toggle */}
         {isTeacher(userId) && (
@@ -62,12 +78,15 @@ export const NavbarRoutes = () => {
 
         {/* Settings Button */}
         <div className="hidden md:block">
-        <SettingsDropdown />
-        </div>
-        <div className="hidden md:block">
-        <SpotlightSearch />
+          <SettingsDropdown />
         </div>
 
+        {/* Desktop Search */}
+        <div className="hidden md:block">
+          <SpotlightSearch />
+        </div>
+
+        {/* Desktop Notification */}
         <div className="hidden md:block">
           <Link href="#">
             <Button
