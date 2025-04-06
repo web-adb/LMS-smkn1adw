@@ -28,6 +28,105 @@ export const TugasList = ({
   title?: string;
   maxItems?: number;
 }) => {
+  // Data dummy tugas
+  const dummyTugas: Tugas[] = [
+    {
+      id: '1',
+      judul: 'Tugas Matematika - Integral',
+      deskripsi: 'Kerjakan soal integral pada halaman 45-50 buku paket. Upload jawaban dalam format PDF.',
+      deadline: '2023-10-15T23:59:00',
+      lampiran: 'soal_integral.pdf',
+      pengumpulan: {
+        id: 'sub1',
+        dikumpulkanPada: '2023-10-14T14:30:00',
+        nilai: 85
+      }
+    },
+    {
+      id: '2',
+      judul: 'Makalah Sejarah Indonesia',
+      deskripsi: 'Buat makalah tentang perjuangan kemerdekaan Indonesia minimal 5 halaman.',
+      deadline: '2023-10-20T23:59:00',
+      lampiran: 'pedoman_makalah.pdf',
+      pengumpulan: {
+        id: 'sub2',
+        dikumpulkanPada: '2023-10-19T21:15:00',
+        nilai: null
+      }
+    },
+    {
+      id: '3',
+      judul: 'Praktikum Fisika - Hukum Ohm',
+      deadline: '2023-10-12T23:59:00',
+      deskripsi: 'Lakukan praktikum sesuai petunjuk di lab dan laporkan hasilnya.',
+      lampiran: 'modul_praktikum.pdf'
+    },
+    {
+      id: '4',
+      judul: 'Resume Buku Sosiologi',
+      deskripsi: 'Buat resume bab 3 buku Sosiologi Modern dengan ketentuan font Times New Roman 12pt.',
+      deadline: '2023-10-25T23:59:00',
+      lampiran: 'daftar_buku.pdf'
+    },
+    {
+      id: '5',
+      judul: 'Proyek Bahasa Inggris - Presentasi',
+      deskripsi: 'Buat presentasi 10 slide tentang budaya Inggris. Presentasi akan dilakukan minggu depan.',
+      deadline: '2023-10-18T23:59:00',
+      lampiran: 'guidelines.pdf',
+      pengumpulan: {
+        id: 'sub5',
+        dikumpulkanPada: '2023-10-17T10:45:00',
+        nilai: 90
+      }
+    },
+    {
+      id: '6',
+      judul: 'Tugas Kimia - Tabel Periodik',
+      deskripsi: 'Analisis sifat-sifat unsur golongan IA dalam tabel periodik.',
+      deadline: '2023-10-14T23:59:00',
+      lampiran: 'tabel_periodik.xlsx'
+    },
+    {
+      id: '7',
+      judul: 'Esai Pendidikan Pancasila',
+      deskripsi: 'Tulis esai tentang penerapan nilai-nilai Pancasila dalam kehidupan sehari-hari.',
+      deadline: '2023-10-30T23:59:00',
+      lampiran: 'rubrik_penilaian.docx',
+      pengumpulan: {
+        id: 'sub7',
+        dikumpulkanPada: '2023-10-28T15:20:00',
+        nilai: 88
+      }
+    },
+    {
+      id: '8',
+      judul: 'Tugas Seni Budaya - Lukisan',
+      deskripsi: 'Buat lukisan dengan tema alam bebas menggunakan media bebas.',
+      deadline: '2023-11-05T23:59:00',
+      lampiran: 'contoh_karya.jpg'
+    },
+    {
+      id: '9',
+      judul: 'Laporan Praktikum Biologi',
+      deskripsi: 'Laporan hasil pengamatan mikroskopis sel tumbuhan dan hewan.',
+      deadline: '2023-10-16T23:59:00',
+      lampiran: 'protokol_praktikum.pdf'
+    },
+    {
+      id: '10',
+      judul: 'Tugas Geografi - Peta Dunia',
+      deskripsi: 'Buat peta dunia dengan menandai semua benua dan samudera utama.',
+      deadline: '2023-10-22T23:59:00',
+      lampiran: 'template_peta.pdf',
+      pengumpulan: {
+        id: 'sub10',
+        dikumpulkanPada: '2023-10-21T18:30:00',
+        nilai: 95
+      }
+    }
+  ];
+
   const [tugas, setTugas] = useState<Tugas[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +137,9 @@ export const TugasList = ({
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('/api/tugas');
-        if (!response.ok) throw new Error('Gagal mengambil data');
-        const data = await response.json();
-        setTugas(data);
+        // Simulasi fetching data
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setTugas(dummyTugas);
       } catch (err) {
         console.error('Error:', err);
         setError(err instanceof Error ? err.message : 'Terjadi kesalahan');

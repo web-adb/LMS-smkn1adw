@@ -7,6 +7,7 @@ import { InfoCard } from "./_components/info-card";
 import { WelcomeBanner } from "./banner";
 import { WidgetsGrid } from "./widgets-grid";
 import { TugasList } from "./tugas-list";
+import { KalenderTerdekat } from "./kalendarterdekat";
 
 export default async function Dashboard() {
   const { userId } = auth();
@@ -39,6 +40,7 @@ export default async function Dashboard() {
       </div>
       <CoursesList items={[...coursesInProgress, ...completedCourses]} />
       <TugasList/>
+      <KalenderTerdekat />
     </div>
   );
 }
