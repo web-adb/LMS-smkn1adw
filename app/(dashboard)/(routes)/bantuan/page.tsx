@@ -36,236 +36,51 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Breadcrumb from "./Breadcrumb";
+import { FAQItem, ContactMethod, GuideResource, AISuggestion } from "./types";
+import { FAQAccordionItem } from "./FAQAccordionItem";
+import { ContactCard } from "./ContactCard";
+import { GuideCard } from "./GuideCard";
+import { AIChatBubble } from "./AIChatBubble";
 
-// ========== TYPES ==========
-type FAQItem = {
-  id: string;
-  question: string;
-  answer: string;
-  category: "umum" | "teknis" | "pembayaran" | "akun";
-  icon: React.ReactNode;
-};
+// Gemini AI Client
+class GeminiClient {
+  private apiKey: string;
+  private baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
-type ContactMethod = {
-  id: string;
-  name: string;
-  value: string;
-  description?: string;
-  icon: React.ReactNode;
-  action?: string;
-  href?: string;
-  available?: string;
-};
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
 
-type GuideResource = {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  cta: string;
-  href: string;
-  type: "doc" | "video" | "troubleshoot" | "api";
-};
+  async generateContent(prompt: string) {
+    try {
+      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        }),
+      });
 
-type AISuggestion = {
-  question: string;
-  answer: string;
-  relevantFAQ?: string;
-};
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-// ========== COMPONENTS ==========
-const FAQAccordionItem = ({
-  item,
-  isOpen,
-  onClick,
-  darkMode
-}: {
-  item: FAQItem;
-  isOpen: boolean;
-  onClick: () => void;
-  darkMode: boolean;
-}) => (
-  <div className={`border rounded-lg overflow-hidden transition-all ${
-    isOpen 
-      ? darkMode 
-        ? 'border-indigo-500 bg-indigo-900/20' 
-        : 'border-indigo-300 bg-indigo-50' 
-      : darkMode 
-        ? 'border-gray-700 hover:border-gray-600' 
-        : 'border-gray-200 hover:border-gray-300'
-  }`}>
-    <button
-      onClick={onClick}
-      className="w-full flex justify-between items-center p-4 text-left focus:outline-none"
-      aria-expanded={isOpen}
-    >
-      <div className="flex items-start gap-3">
-        <div className={`mt-0.5 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-          {item.icon}
-        </div>
-        <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-          {item.question}
-        </h3>
-      </div>
-      <ChevronDown
-        className={`w-5 h-5 transition-transform ${
-          isOpen 
-            ? darkMode 
-              ? "rotate-180 text-indigo-400" 
-              : "rotate-180 text-indigo-600" 
-            : darkMode 
-              ? "text-gray-400" 
-              : "text-gray-500"
-        }`}
-      />
-    </button>
-    
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="overflow-hidden"
-        >
-          <div className={`px-4 pb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'} ml-9`}>
-            {item.answer}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-);
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak dapat menjawab pertanyaan itu saat ini.";
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      return "Maaf, terjadi kesalahan saat memproses permintaan Anda.";
+    }
+  }
+}
 
-const ContactCard = ({ contact, darkMode }: { contact: ContactMethod; darkMode: boolean }) => (
-  <motion.div 
-    whileHover={{ y: -2 }}
-    className={`rounded-lg border p-5 shadow-sm hover:shadow-md transition-shadow ${
-      darkMode 
-        ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
-        : 'bg-white border-gray-200 hover:border-gray-300'
-    }`}
-  >
-    <div className="flex gap-4">
-      <div className={`p-3 rounded-full flex-shrink-0 ${
-        darkMode ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
-      }`}>
-        {contact.icon}
-      </div>
-      <div>
-        <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-          {contact.name}
-        </h3>
-        <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-          {contact.value}
-        </p>
-        {contact.description && (
-          <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            {contact.description}
-          </p>
-        )}
-        {contact.action && (
-          <a
-            href={contact.href}
-            className={`inline-flex items-center mt-3 text-sm font-medium ${
-              darkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-800'
-            }`}
-          >
-            {contact.action}
-            <ArrowRight className="ml-1 w-4 h-4" />
-          </a>
-        )}
-        {contact.available && (
-          <p className={`text-xs mt-2 flex items-center gap-1 ${
-            darkMode ? 'text-gray-500' : 'text-gray-500'
-          }`}>
-            <Clock className="w-3 h-3" />
-            {contact.available}
-          </p>
-        )}
-      </div>
-    </div>
-  </motion.div>
-);
-
-const GuideCard = ({ guide, darkMode }: { guide: GuideResource; darkMode: boolean }) => (
-  <motion.div
-    whileHover={{ y: -2 }}
-    className={`rounded-lg border p-5 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col ${
-      darkMode 
-        ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
-        : 'bg-white border-gray-200 hover:border-gray-300'
-    }`}
-  >
-    <div className="flex items-center gap-3 mb-3">
-      <div className={`p-2 rounded-lg ${
-        darkMode ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
-      }`}>
-        {guide.icon}
-      </div>
-      <h3 className={`font-medium ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>
-        {guide.title}
-      </h3>
-    </div>
-    <p className={`mb-4 flex-grow ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-      {guide.description}
-    </p>
-    <a
-      href={guide.href}
-      className={`inline-flex items-center justify-center px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium ${
-        darkMode ? 'bg-indigo-700 text-white' : 'bg-indigo-600 text-white'
-      }`}
-    >
-      {guide.cta}
-    </a>
-  </motion.div>
-);
-
-const AIChatBubble = ({ suggestion, darkMode }: { suggestion: AISuggestion | null; darkMode: boolean }) => {
-  if (!suggestion) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className={`mt-6 p-4 rounded-lg border ${
-        darkMode 
-          ? 'bg-gray-800/50 border-gray-700' 
-          : 'bg-indigo-50/50 border-indigo-200'
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        <div className={`p-2 rounded-full ${
-          darkMode ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-600'
-        }`}>
-          <Bot className="h-4 w-4" />
-        </div>
-        <div className="flex-1">
-          <h4 className={`text-sm font-medium mb-1 ${
-            darkMode ? 'text-indigo-400' : 'text-indigo-700'
-          }`}>
-            Saran AI
-          </h4>
-          <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-            {suggestion.question}
-          </p>
-          <p className={`text-sm mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            {suggestion.answer}
-          </p>
-          {suggestion.relevantFAQ && (
-            <p className={`text-xs mt-2 ${darkMode ? 'text-indigo-300' : 'text-indigo-500'}`}>
-              Lihat juga: {suggestion.relevantFAQ}
-            </p>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ========== MAIN COMPONENT ==========
 export default function BantuanDanDukunganPage() {
   const [activeTab, setActiveTab] = useState<"faq" | "contact" | "resources">("faq");
   const [activeCategory, setActiveCategory] = useState<"all" | FAQItem["category"]>("all");
@@ -274,6 +89,14 @@ export default function BantuanDanDukunganPage() {
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [geminiClient, setGeminiClient] = useState<GeminiClient | null>(null);
+
+  // Initialize Gemini client
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+      setGeminiClient(new GeminiClient(process.env.NEXT_PUBLIC_GEMINI_API_KEY));
+    }
+  }, []);
 
   // Check for dark mode preference
   useEffect(() => {
@@ -464,38 +287,43 @@ export default function BantuanDanDukunganPage() {
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-  // Fetch AI suggestion
+  // Fetch AI suggestion using Gemini
   const fetchAiSuggestion = async () => {
+    if (!geminiClient) return;
+    
     setIsLoadingSuggestion(true);
     try {
-      // In a real app, you would use the Gemini API here
-      // This is a mock implementation for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create context from FAQs
+      const faqContext = faqData.map(faq => 
+        `Pertanyaan: ${faq.question}\nJawaban: ${faq.answer}`
+      ).join("\n\n");
+
+      // Create prompt for Gemini
+      const prompt = `Anda adalah asisten AI untuk platform pembelajaran online. Berdasarkan pertanyaan pengguna berikut dan FAQ yang tersedia, berikan jawaban yang membantu:
+
+Pertanyaan pengguna: "${searchQuery || 'Saya butuh bantuan dengan platform ini'}"
+
+FAQ yang tersedia:
+${faqContext}
+
+Berikan jawaban yang singkat (1-2 paragraf) dan relevan. Jika ada FAQ yang relevan, sebutkan. Gunakan bahasa Indonesia yang formal tetapi ramah.`;
+
+      const response = await geminiClient.generateContent(prompt);
       
-      const mockSuggestions = [
-        {
-          question: "Saya kesulitan mengakses materi kursus",
-          answer: "Pastikan Anda sudah terdaftar dalam kursus tersebut. Jika sudah terdaftar tetapi masih tidak bisa mengakses, coba clear cache browser atau gunakan mode penyamaran.",
-          relevantFAQ: "Bagaimana mengakses materi pembelajaran?"
-        },
-        {
-          question: "Apakah ada batas waktu untuk menyelesaikan kursus?",
-          answer: "Kebanyakan kursus memiliki waktu akses selama 1 tahun setelah pendaftaran. Namun beberapa kursus khusus mungkin memiliki durasi berbeda yang akan terlihat di halaman detail kursus.",
-          relevantFAQ: ""
-        },
-        {
-          question: "Bagaimana cara memastikan sertifikat saya valid?",
-          answer: "Semua sertifikat dari platform kami memiliki kode verifikasi unik yang dapat dicek di halaman verifikasi sertifikat di website kami.",
-          relevantFAQ: "Bagaimana cara mengunduh sertifikat?"
-        }
-      ];
-      
-      const randomSuggestion = mockSuggestions[Math.floor(Math.random() * mockSuggestions.length)];
-      setAiSuggestion(randomSuggestion);
+      // Parse the response
+      const relevantFAQ = faqData.find(faq => 
+        response.includes(faq.question)
+      )?.question;
+
+      setAiSuggestion({
+        question: searchQuery || "Saya butuh bantuan dengan platform ini",
+        answer: response,
+        relevantFAQ
+      });
     } catch (error) {
       console.error("Error fetching AI suggestion:", error);
       setAiSuggestion({
-        question: "Maaf, terjadi kesalahan saat memproses permintaan Anda.",
+        question: "Maaf, terjadi kesalahan",
         answer: "Silakan coba lagi nanti atau hubungi tim dukungan kami untuk bantuan lebih lanjut."
       });
     } finally {
@@ -505,15 +333,24 @@ export default function BantuanDanDukunganPage() {
 
   // Fetch suggestion when tab changes to FAQ or when search query changes
   useEffect(() => {
-    if (activeTab === "faq") {
+    if (activeTab === "faq" && geminiClient) {
       fetchAiSuggestion();
     }
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, geminiClient]);
 
   return (
     <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Main Content */}
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <Breadcrumb />
+        
+        <div className="flex items-center mb-6">
+          <HelpCircle className="w-8 h-8 text-indigo-600 dark:text-indigo-400 mr-3" />
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+            Bantuan dan Dukungan
+          </h1>
+        </div>
+
         {/* Navigation Tabs */}
         <div className={`flex border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} mb-8`}>
           <button
@@ -691,7 +528,26 @@ export default function BantuanDanDukunganPage() {
             </div>
 
             {/* AI Suggestion */}
-            <AIChatBubble suggestion={aiSuggestion} darkMode={darkMode} />
+            {isLoadingSuggestion ? (
+              <div className={`mt-6 p-4 rounded-lg border ${
+                darkMode 
+                  ? 'bg-gray-800/50 border-gray-700' 
+                  : 'bg-indigo-50/50 border-indigo-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${
+                    darkMode ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-100 text-indigo-600'
+                  }`}>
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Mencari saran...
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <AIChatBubble suggestion={aiSuggestion} darkMode={darkMode} />
+            )}
 
             {/* Still Need Help */}
             <div className={`mt-6 border rounded-lg p-6 shadow-sm ${
