@@ -8,7 +8,7 @@ export const QuizBankCard = () => {
       className="group transition-all duration-300 hover:-translate-y-1"
       aria-label="Navigasi ke bank soal dan quiz"
     >
-      <div className="h-full bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 hover:border-purple-200 overflow-hidden relative">
+      <div className="h-full bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 hover:border-purple-200 overflow-hidden relative dark:bg-gray-800">
         <div className="absolute -right-10 -top-10 w-32 h-32 bg-purple-50 rounded-full opacity-30 group-hover:opacity-40 transition-opacity duration-300"></div>
 
         <div className="flex items-start mb-5 relative z-10">
@@ -16,14 +16,14 @@ export const QuizBankCard = () => {
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800 mb-1">
+            <h2 className="text-xl font-bold text-gray-800 mb-1 dark:text-white">
               Bank Soal & Quiz
             </h2>
-            <p className="text-gray-500 text-sm">Evaluasi pembelajaran</p>
+            <p className="text-gray-500 text-sm dark:text-white">Evaluasi pembelajaran</p>
           </div>
         </div>
 
-        <p className="text-gray-600 mb-6 relative z-10">
+        <p className="text-gray-600 mb-6 relative z-10 dark:text-white">
           Buat quiz dan ujian, kelola bank soal, serta analisis hasil evaluasi
           peserta didik.
         </p>
